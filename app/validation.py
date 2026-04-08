@@ -17,3 +17,7 @@ class ApiError(Exception):
 
 def invalid(message):
     return ApiError(400, 'INVALID_REQUEST', message)
+
+
+def digest(value):
+    return hashlib.sha256(value.encode()).hexdigest()
