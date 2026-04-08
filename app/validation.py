@@ -21,3 +21,7 @@ def invalid(message):
 
 def digest(value):
     return hashlib.sha256(value.encode()).hexdigest()
+
+
+def canonical(value):
+    return json.dumps(value, sort_keys=True, separators=(',', ':'), ensure_ascii=False)
