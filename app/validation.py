@@ -25,3 +25,13 @@ def digest(value):
 
 def canonical(value):
     return json.dumps(value, sort_keys=True, separators=(',', ':'), ensure_ascii=False)
+
+
+def principal(event):
+    arn = event.get('requestContext', {}).get('identity', {}).get('userArn', '')
+    match = re.fullmatch(r'arn:(aws(?:-us-gov|-cn)?):sts::(\d{12}):assumed-role/([^/]+)/[^/]+', arn)
+    if match:
+        return f'arn:{match[1]}:iam::{match[2]}:role/{match[3]}'
+    if re.fullmatch(r'arn:aws(?:-us-gov|-cn)?:iam::\d{12}:(?:role|user)/[A-Za-z0-9+=,.@_/-]+', arn):
+        return arn
+    raise ApiError(401, 'UNAUTHENTICATED', 'A signed IAM request is required')
