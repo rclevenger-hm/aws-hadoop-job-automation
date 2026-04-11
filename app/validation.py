@@ -35,3 +35,19 @@ def principal(event):
     if re.fullmatch(r'arn:aws(?:-us-gov|-cn)?:iam::\d{12}:(?:role|user)/[A-Za-z0-9+=,.@_/-]+', arn):
         return arn
     raise ApiError(401, 'UNAUTHENTICATED', 'A signed IAM request is required')
+
+
+def body(event):
+    raw = event.get('body')
+    if not isinstance(raw, str) or len(raw) > MAX_BODY * 2:
+        raise invalid('A JSON body of at most 64 KiB is required')
+    try:
+        data = base64.b64decode(raw, validate=True) if event.get('isBase64Encoded') else raw.encode('utf-8')
+        if len(data) > MAX_BODY:
+            raise ApiError(413, 'BODY_TOO_LARGE', 'Body exceeds 64 KiB')
+        result = json.loads(data.decode('utf-8'), parse_constant=lambda _: (_ for _ in ()).throw(ValueError()))
+    except (ValueError, UnicodeError) as exc:
+        raise invalid('Body must be valid UTF-8 JSON') from exc
+    if not isinstance(result, dict):
+        raise invalid('Body must be a JSON object')
+    return result
