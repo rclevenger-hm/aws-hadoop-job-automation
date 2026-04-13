@@ -51,3 +51,13 @@ def body(event):
     if not isinstance(result, dict):
         raise invalid('Body must be a JSON object')
     return result
+
+
+def text(value, field, maximum=4096):
+    if not isinstance(value, str) or not value.strip() or len(value) > maximum or any(ord(c) < 32 or ord(c) == 127 for c in value):
+        raise invalid(f'{field} must be nonblank text, at most {maximum} characters, without controls')
+    try:
+        value.encode('utf-8')
+    except UnicodeError as exc:
+        raise invalid(f'{field} must be valid Unicode') from exc
+    return value.strip()
