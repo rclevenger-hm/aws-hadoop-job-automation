@@ -61,3 +61,16 @@ def text(value, field, maximum=4096):
     except UnicodeError as exc:
         raise invalid(f'{field} must be valid Unicode') from exc
     return value.strip()
+
+
+def allowed_path(value, prefixes, field):
+    value = text(value, field)
+    try:
+        parts = urlsplit(value)
+    except ValueError as exc:
+        raise invalid(f'{field} is not a valid URI') from exc
+    if parts.scheme not in {'s3', 'hdfs'} or parts.query or parts.fragment or '%' in value or '\\' in value or any(p in {'.', '..'} for p in parts.path.split('/')):
+        raise invalid(f'{field} must be a canonical S3 or HDFS URI')
+    if not any(value.startswith(p) and len(value) > len(p) for p in prefixes):
+        raise ApiError(403, 'PATH_NOT_ALLOWED', f'{field} is outside the configured prefixes')
+    return value
