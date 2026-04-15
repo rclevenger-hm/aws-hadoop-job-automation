@@ -104,3 +104,9 @@ def key_id(key, tenant):
     if not isinstance(key, str) or not re.fullmatch(r'[A-Za-z0-9._:-]{8,128}', key):
         raise invalid('Idempotency-Key must be 8–128 letters, digits, dots, underscores, colons or hyphens')
     return digest(f'{tenant}:{key}')
+
+
+def identifier(value):
+    if not isinstance(value, str) or not re.fullmatch(r'[a-f0-9]{64}', value):
+        raise invalid('Invalid job identifier')
+    return value
