@@ -74,3 +74,27 @@ def allowed_path(value, prefixes, field):
     if not any(value.startswith(p) and len(value) > len(p) for p in prefixes):
         raise ApiError(403, 'PATH_NOT_ALLOWED', f'{field} is outside the configured prefixes')
     return value
+
+
+def job_request(payload, profiles, caller):
+    if set(payload) - {'profile', 'jar_path', 'job_class', 'input_path', 'output_path', 'arguments'}:
+        raise invalid('Unknown request field')
+    name = text(payload.get('profile'), 'profile', 40)
+    profile = profiles.get(name)
+    if not profile or caller not in profile['allowed_principals']:
+        raise ApiError(403, 'PROFILE_NOT_ALLOWED', 'Cluster profile is not authorized')
+    result = {'profile': name}
+    for field, key in [('jar_path', 'jar_prefixes'), ('input_path', 'input_prefixes'), ('output_path', 'output_prefixes')]:
+        result[field] = allowed_path(payload.get(field), profile[key], field)
+    result['job_class'] = text(payload.get('job_class'), 'job_class')
+    if not re.fullmatch(r'[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*', result['job_class'], re.ASCII):
+        raise invalid('job_class must be a fully qualified Java class name')
+    arguments = payload.get('arguments', [])
+    if not isinstance(arguments, list) or len(arguments) > 20:
+        raise invalid('arguments must contain at most 20 strings')
+    result['arguments'] = [text(v, 'argument', 1024) for v in arguments]
+    if sum(len(result[k]) for k in ['jar_path', 'job_class', 'input_path', 'output_path']) + sum(map(len, result['arguments'])) > 10240:
+        raise invalid('EMR HadoopJarStep strings exceed 10240 characters')
+    if result['input_path'] == result['output_path']:
+        raise invalid('Input and output paths must differ')
+    return result
