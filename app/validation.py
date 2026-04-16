@@ -110,3 +110,11 @@ def identifier(value):
     if not isinstance(value, str) or not re.fullmatch(r'[a-f0-9]{64}', value):
         raise invalid('Invalid job identifier')
     return value
+
+
+def integer(value, default, maximum):
+    if value is None:
+        return default
+    if not re.fullmatch(r'[0-9]+', str(value)) or not 1 <= int(value) <= maximum:
+        raise invalid(f'Expected integer from 1 to {maximum}')
+    return int(value)
