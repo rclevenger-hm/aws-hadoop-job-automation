@@ -24,3 +24,14 @@ def load_profiles(raw):
         if log.scheme != 's3' or not log.netloc or not p['log_uri'].endswith('/') or any(v in p['log_uri'] for v in ['*', '?', '#', '%', '\\']) or any(x in {'.', '..'} for x in log.path.split('/')):
             raise ValueError('Configure the existing cluster S3 log directory ending in /')
     return profiles
+
+
+def settings():
+    return {
+        'profiles': load_profiles(os.environ['CLUSTER_PROFILES']),
+        'table': os.environ['JOBS_TABLE'], 'queue': os.environ['JOBS_QUEUE_URL'],
+        'prefix': os.environ['SERVICE_NAME'],
+        'daily_limit': int(os.environ.get('DAILY_JOB_LIMIT', '100')),
+        'rate_limit': int(os.environ.get('REQUESTS_PER_MINUTE', '60')),
+        'retention': int(os.environ.get('RETENTION_DAYS', '30')),
+    }
