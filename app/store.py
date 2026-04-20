@@ -16,3 +16,13 @@ SERIALIZER = TypeSerializer()
 
 def encode(item):
     return {k: SERIALIZER.serialize(v) for k, v in item.items()}
+
+
+def plain(value):
+    if isinstance(value, Decimal):
+        return int(value)
+    if isinstance(value, dict):
+        return {k: plain(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [plain(v) for v in value]
+    return value
