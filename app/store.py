@@ -26,3 +26,7 @@ def plain(value):
     if isinstance(value, list):
         return [plain(v) for v in value]
     return value
+
+
+def conditional(error):
+    return isinstance(error, ClientError) and error.response['Error']['Code'] == 'ConditionalCheckFailedException'
