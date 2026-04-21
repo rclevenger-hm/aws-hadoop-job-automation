@@ -38,3 +38,6 @@ class Store:
         self.daily_limit, self.rate_limit, self.retention, self.clock = daily_limit, rate_limit, retention, clock
         if not all(isinstance(v, int) and v > 0 for v in [daily_limit, rate_limit, retention]):
             raise ValueError('Limits must be positive integers')
+
+    def now(self):
+        return int(self.clock())
