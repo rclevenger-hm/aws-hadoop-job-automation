@@ -50,3 +50,6 @@ class Store:
         if item and item.get('expires_at', self.now() + 1) > self.now():
             return plain(item)
         return None
+
+    def enqueue(self, job):
+        self.queue.send_message(QueueUrl=self.queue_url, MessageBody=canonical({'tenant': job['pk'], 'job_id': job['job_id']}))
