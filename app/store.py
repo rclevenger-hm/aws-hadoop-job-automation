@@ -41,3 +41,6 @@ class Store:
 
     def now(self):
         return int(self.clock())
+
+    def date(self):
+        return datetime.fromtimestamp(self.now(), timezone.utc).strftime('%Y-%m-%d')
