@@ -44,3 +44,9 @@ class Store:
 
     def date(self):
         return datetime.fromtimestamp(self.now(), timezone.utc).strftime('%Y-%m-%d')
+
+    def get(self, tenant, job_id):
+        item = self.table.get_item(Key={'pk': tenant, 'sk': f'JOB#{job_id}'}, ConsistentRead=True).get('Item')
+        if item and item.get('expires_at', self.now() + 1) > self.now():
+            return plain(item)
+        return None
