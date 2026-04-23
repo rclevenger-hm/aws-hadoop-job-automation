@@ -53,3 +53,14 @@ class Store:
 
     def enqueue(self, job):
         self.queue.send_message(QueueUrl=self.queue_url, MessageBody=canonical({'tenant': job['pk'], 'job_id': job['job_id']}))
+
+    def decorate(self, job):
+        if job['status'] in TERMINAL:
+            job.pop('active_pk', None)
+            job.pop('active_sk', None)
+            job['expires_at'] = self.now() + self.retention * 86400
+        else:
+            job.pop('expires_at', None)
+            job['active_pk'] = f"ACTIVE#{job['job_id'][0]}"
+            job['active_sk'] = f"{job['next_check']:012d}#{job['job_id']}"
+        return job
