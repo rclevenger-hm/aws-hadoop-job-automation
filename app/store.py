@@ -95,3 +95,9 @@ class Store:
                 raise ApiError(409, 'EXPIRED_KEY', 'Use a fresh idempotency key') from exc
             raise
         return job, True
+
+    @staticmethod
+    def check_replay(job, fingerprint):
+        if job['fingerprint'] != fingerprint:
+            raise ApiError(409, 'IDEMPOTENCY_CONFLICT', 'Key already used with different job inputs')
+        return job
