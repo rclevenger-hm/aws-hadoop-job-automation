@@ -101,3 +101,16 @@ class Store:
         if job['fingerprint'] != fingerprint:
             raise ApiError(409, 'IDEMPOTENCY_CONFLICT', 'Key already used with different job inputs')
         return job
+
+    def replace(self, job, **changes):
+        updated = self.decorate({**job, **changes, 'version': job['version'] + 1, 'updated_at': self.now()})
+        try:
+            self.table.put_item(Item=updated, ConditionExpression='#v = :version',
+                                ExpressionAttributeNames={'#v': 'version'}, ExpressionAttributeValues={':version': job['version']})
+        except ClientError as exc:
+            if conditional(exc):
+                return None
+            raise
+        if updated['status'] != job['status']:
+            logging.getLogger(__name__).warning(json.dumps({'event': 'job_state', 'job_id': job['job_id'], 'status': updated['status']}))
+        return updated
