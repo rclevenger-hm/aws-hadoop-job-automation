@@ -64,3 +64,34 @@ class Store:
             job['active_pk'] = f"ACTIVE#{job['job_id'][0]}"
             job['active_sk'] = f"{job['next_check']:012d}#{job['job_id']}"
         return job
+
+    def create(self, tenant, job_id, request, profile, step_name):
+        existing = self.get(tenant, job_id)
+        fingerprint = digest(canonical(request))
+        if existing:
+            return self.check_replay(existing, fingerprint), False
+        job = self.decorate({'pk': tenant, 'sk': f'JOB#{job_id}', 'job_id': job_id, 'request': request, 'profile': profile,
+                             'fingerprint': fingerprint, 'step_name': step_name, 'status': 'QUEUED', 'version': 1,
+                             'created_at': self.now(), 'updated_at': self.now(), 'next_check': self.now() + 120,
+                             'history_pk': tenant, 'history_sk': f'{self.now():012d}#{job_id}'})
+        try:
+            self.client.transact_write_items(TransactItems=[
+                {'Put': {'TableName': self.table.name, 'Item': encode(job), 'ConditionExpression': 'attribute_not_exists(pk)'}},
+                {'Update': {'TableName': self.table.name, 'Key': encode({'pk': tenant, 'sk': f'USAGE#{self.date()}'}),
+                            'UpdateExpression': 'SET expires_at = :expiry ADD units :one',
+                            'ConditionExpression': 'attribute_not_exists(units) OR units < :limit',
+                            'ExpressionAttributeValues': encode({':expiry': self.now() + 3 * 86400, ':one': 1, ':limit': self.daily_limit})}},
+            ])
+        except ClientError as exc:
+            if exc.response['Error']['Code'] != 'TransactionCanceledException':
+                raise
+            existing = self.get(tenant, job_id)
+            if existing:
+                return self.check_replay(existing, fingerprint), False
+            if self.usage(tenant)['jobs'] >= self.daily_limit:
+                raise ApiError(429, 'DAILY_LIMIT', 'Daily job allowance exhausted') from exc
+            old = self.table.get_item(Key={'pk': tenant, 'sk': f'JOB#{job_id}'}, ConsistentRead=True).get('Item')
+            if old:
+                raise ApiError(409, 'EXPIRED_KEY', 'Use a fresh idempotency key') from exc
+            raise
+        return job, True
