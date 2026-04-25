@@ -114,3 +114,14 @@ class Store:
         if updated['status'] != job['status']:
             logging.getLogger(__name__).warning(json.dumps({'event': 'job_state', 'job_id': job['job_id'], 'status': updated['status']}))
         return updated
+
+    def request_limit(self, tenant):
+        try:
+            self.table.update_item(Key={'pk': tenant, 'sk': f'RATE#{self.now() // 60}'},
+                                   UpdateExpression='SET expires_at = :expiry ADD units :one',
+                                   ConditionExpression='attribute_not_exists(units) OR units < :limit',
+                                   ExpressionAttributeValues={':expiry': self.now() + 120, ':one': 1, ':limit': self.rate_limit})
+        except ClientError as exc:
+            if conditional(exc):
+                raise ApiError(429, 'RATE_LIMIT', 'Request allowance exhausted; retry in one minute') from exc
+            raise
