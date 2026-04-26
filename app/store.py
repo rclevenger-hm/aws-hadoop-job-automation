@@ -125,3 +125,7 @@ class Store:
             if conditional(exc):
                 raise ApiError(429, 'RATE_LIMIT', 'Request allowance exhausted; retry in one minute') from exc
             raise
+
+    def usage(self, tenant):
+        item = self.table.get_item(Key={'pk': tenant, 'sk': f'USAGE#{self.date()}'}, ConsistentRead=True).get('Item', {})
+        return {'date': self.date(), 'jobs': int(item.get('units', 0)), 'limit': self.daily_limit}
