@@ -129,3 +129,25 @@ class Store:
     def usage(self, tenant):
         item = self.table.get_item(Key={'pk': tenant, 'sk': f'USAGE#{self.date()}'}, ConsistentRead=True).get('Item', {})
         return {'date': self.date(), 'jobs': int(item.get('units', 0)), 'limit': self.daily_limit}
+
+    def history(self, tenant, limit=20, cursor=None, status=None):
+        signature = digest(canonical({'tenant': tenant, 'status': status}))
+        options = {'IndexName': 'history', 'KeyConditionExpression': Key('history_pk').eq(tenant), 'ScanIndexForward': False, 'Limit': limit}
+        if cursor:
+            try:
+                if len(cursor) > 2048:
+                    raise ValueError()
+                decoded = json.loads(base64.b64decode(cursor, altchars=b'-_', validate=True))
+                key = decoded['key']
+                if decoded['signature'] != signature or key['pk'] != tenant or key['history_pk'] != tenant or set(key) != {'pk', 'sk', 'history_pk', 'history_sk'} or not all(isinstance(v, str) for v in key.values()):
+                    raise ValueError()
+                options['ExclusiveStartKey'] = key
+            except (ValueError, KeyError, TypeError) as exc:
+                raise invalid('Cursor does not match this query') from exc
+        page = self.table.query(**options)
+        # GSI state may lag. Read authoritative rows before returning status or ownership data.
+        jobs = [self.get(tenant, v['job_id']) for v in page.get('Items', [])]
+        jobs = [v for v in jobs if v and (not status or v['status'] == status)]
+        last = page.get('LastEvaluatedKey')
+        token = base64.urlsafe_b64encode(canonical({'key': last, 'signature': signature}).encode()).decode() if last else None
+        return jobs, token
