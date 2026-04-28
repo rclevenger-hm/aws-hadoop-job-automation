@@ -155,3 +155,9 @@ class Store:
     def due(self, shard, limit=25):
         page = self.table.query(IndexName='active', KeyConditionExpression=Key('active_pk').eq(f'ACTIVE#{shard}') & Key('active_sk').lte(f'{self.now():012d}#~'), Limit=limit)
         return page.get('Items', [])
+
+    def claim_poll(self, tenant, job_id):
+        job = self.get(tenant, job_id)
+        if not job or job['status'] in TERMINAL or job['next_check'] > self.now():
+            return None
+        return self.replace(job, next_check=self.now() + 120)
