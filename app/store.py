@@ -151,3 +151,7 @@ class Store:
         last = page.get('LastEvaluatedKey')
         token = base64.urlsafe_b64encode(canonical({'key': last, 'signature': signature}).encode()).decode() if last else None
         return jobs, token
+
+    def due(self, shard, limit=25):
+        page = self.table.query(IndexName='active', KeyConditionExpression=Key('active_pk').eq(f'ACTIVE#{shard}') & Key('active_sk').lte(f'{self.now():012d}#~'), Limit=limit)
+        return page.get('Items', [])
