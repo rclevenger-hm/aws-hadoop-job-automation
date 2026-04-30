@@ -23,3 +23,14 @@ class Emr:
         if len(ids) != 1 or not isinstance(ids[0], str) or not ids[0].startswith('s-'):
             raise RuntimeError('EMR returned an ambiguous step identity')
         return ids[0]
+
+    def find(self, job):
+        args = {'ClusterId': job['profile']['cluster_id']}
+        if job.get('scan_marker'):
+            args['Marker'] = job['scan_marker']
+        page = self.client.list_steps(**args)
+        found = set(job.get('scan_matches', []))
+        for step in page.get('Steps', []):
+            if step.get('Name') == job['step_name']:
+                found.add(step['Id'])
+        return sorted(found), page.get('Marker', '')
