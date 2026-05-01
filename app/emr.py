@@ -41,3 +41,8 @@ class Emr:
         if not state:
             raise RuntimeError('Unrecognized EMR state')
         return state
+
+    def cancel(self, job):
+        result = self.client.cancel_steps(ClusterId=job['profile']['cluster_id'], StepIds=[job['step_id']], StepCancellationOption='SEND_INTERRUPT')
+        entries = result.get('CancelStepsInfoList', [])
+        return len(entries) == 1 and entries[0].get('StepId') == job['step_id'] and entries[0].get('Status') == 'SUBMITTED'
