@@ -34,3 +34,10 @@ class Emr:
             if step.get('Name') == job['step_name']:
                 found.add(step['Id'])
         return sorted(found), page.get('Marker', '')
+
+    def status(self, job):
+        response = self.client.describe_step(ClusterId=job['profile']['cluster_id'], StepId=job['step_id'])['Step']['Status']
+        state = REMOTE_STATES.get(response['State'])
+        if not state:
+            raise RuntimeError('Unrecognized EMR state')
+        return state
