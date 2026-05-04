@@ -20,3 +20,9 @@ class Service:
         if job['status'] == 'QUEUED':
             self.store.enqueue(job)
         return public(job), created
+
+    def owned(self, caller, job_id):
+        job = self.store.get(digest(caller), identifier(job_id))
+        if not job:
+            raise ApiError(404, 'NOT_FOUND', 'Job not found')
+        return job
