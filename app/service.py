@@ -39,3 +39,17 @@ class Service:
             if updated:
                 return public(updated)
         raise ApiError(409, 'STATE_CHANGED', 'Job changed concurrently; retry the request')
+
+    def attach(self, tenant, job_id, step_id=None, reason=None):
+        for _ in range(5):
+            job = self.store.get(tenant, job_id)
+            if not job or job['status'] in TERMINAL or job.get('step_id'):
+                return
+            changes = {'next_check': self.store.now()}
+            if step_id:
+                changes.update(step_id=step_id, status='CANCEL_REQUESTED' if job.get('cancel_requested') else 'SUBMITTED', reason='')
+            else:
+                changes.update(status='CANCEL_REQUESTED' if job.get('cancel_requested') else 'SUBMISSION_UNKNOWN', reason=reason)
+            if self.store.replace(job, **changes):
+                return
+        raise RuntimeError('Concurrent updates prevented step attachment; reconciliation will retry')
