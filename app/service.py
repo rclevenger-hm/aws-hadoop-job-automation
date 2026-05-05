@@ -26,3 +26,16 @@ class Service:
         if not job:
             raise ApiError(404, 'NOT_FOUND', 'Job not found')
         return job
+
+    def cancel(self, caller, job_id):
+        for _ in range(4):
+            job = self.owned(caller, job_id)
+            if job['status'] == 'CANCELLED' or job.get('cancel_requested'):
+                return public(job)
+            if job['status'] in TERMINAL:
+                raise ApiError(409, 'ALREADY_FINISHED', 'This job is no longer accepting cancellation')
+            status = 'CANCELLED' if job['status'] == 'QUEUED' else 'CANCEL_REQUESTED'
+            updated = self.store.replace(job, status=status, cancel_requested=True, next_check=self.store.now())
+            if updated:
+                return public(updated)
+        raise ApiError(409, 'STATE_CHANGED', 'Job changed concurrently; retry the request')
