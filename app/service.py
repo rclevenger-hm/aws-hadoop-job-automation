@@ -72,3 +72,35 @@ class Service:
             self.attach(tenant, job_id, reason='SUBMISSION_OUTCOME_UNKNOWN')
             return
         self.attach(tenant, job_id, step_id=step_id)
+
+    def reconcile_one(self, tenant, job_id):
+        job = self.store.claim_poll(tenant, job_id)
+        if not job:
+            return
+        if job['status'] == 'QUEUED':
+            if self.store.now() - job['created_at'] > 86400:
+                self.store.replace(job, status='FAILED', reason='QUEUE_ADMISSION_EXPIRED')
+            else:
+                self.store.enqueue(job)
+            return
+        if not job.get('step_id'):
+            # Allow the submitter to finish before looking for a lost response.
+            if self.store.now() - job.get('submitted_at', job['created_at']) < 120:
+                return
+            matches, marker = self.emr.find(job)
+            if len(matches) > 1:
+                self.store.replace(job, status='NEEDS_REVIEW', reason='MULTIPLE_MATCHING_STEPS')
+            elif marker:
+                self.store.replace(job, scan_marker=marker, scan_matches=matches, next_check=self.store.now() + 30)
+            elif matches:
+                self.attach(tenant, job_id, step_id=matches[0])
+            elif self.store.now() - job.get('submitted_at', job['created_at']) > 86400:
+                self.store.replace(job, status='NEEDS_REVIEW', reason='NO_STEP_FOUND_OUTCOME_STILL_UNKNOWN')
+            else:
+                self.store.replace(job, status='CANCEL_REQUESTED' if job.get('cancel_requested') else 'SUBMISSION_UNKNOWN', scan_marker='', scan_matches=[], reason='SUBMISSION_OUTCOME_UNKNOWN')
+            return
+        state = self.emr.status(job)
+        changes = {'status': state}
+        if job.get('cancel_requested') and state not in TERMINAL:
+            changes.update(status='CANCEL_REQUESTED', cancel_accepted=self.emr.cancel(job))
+        self.store.replace(job, **changes)
