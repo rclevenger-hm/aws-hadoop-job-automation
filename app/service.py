@@ -104,3 +104,22 @@ class Service:
         if job.get('cancel_requested') and state not in TERMINAL:
             changes.update(status='CANCEL_REQUESTED', cancel_accepted=self.emr.cancel(job))
         self.store.replace(job, **changes)
+
+    def reconcile(self, remaining_ms=lambda: 120000):
+        processed, failed = 0, 0
+        # Rotate the first shard to avoid starving later shards on a busy minute.
+        start = (self.store.now() // 60) % 16
+        for offset in range(16):
+            if remaining_ms() < 20000:
+                return {'processed': processed, 'failed': failed}
+            shard = format((start + offset) % 16, 'x')
+            for job in self.store.due(shard):
+                if remaining_ms() < 20000:
+                    return {'processed': processed, 'failed': failed}
+                try:
+                    self.reconcile_one(job['pk'], job['job_id'])
+                    processed += 1
+                except Exception:
+                    failed += 1
+                    # Lease moved next_check forward. Never re-submit an ambiguous job.
+        return {'processed': processed, 'failed': failed}
