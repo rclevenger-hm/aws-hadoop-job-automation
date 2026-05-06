@@ -53,3 +53,22 @@ class Service:
             if self.store.replace(job, **changes):
                 return
         raise RuntimeError('Concurrent updates prevented step attachment; reconciliation will retry')
+
+    def process(self, message):
+        tenant, job_id = identifier(message.get('tenant')), identifier(message.get('job_id'))
+        job = self.store.get(tenant, job_id)
+        if not job or job['status'] != 'QUEUED':
+            return
+        if self.store.now() - job['created_at'] >= 86400:
+            self.store.replace(job, status='FAILED', reason='QUEUE_ADMISSION_EXPIRED')
+            return
+        job = self.store.replace(job, status='SUBMITTING', submitted_at=self.store.now(), dispatch_token=str(uuid.uuid4()), next_check=self.store.now() + 120)
+        if not job:
+            return
+        # AddJobFlowSteps has no idempotency token. Never retry this call automatically.
+        try:
+            step_id = self.emr.submit(job)
+        except Exception:
+            self.attach(tenant, job_id, reason='SUBMISSION_OUTCOME_UNKNOWN')
+            return
+        self.attach(tenant, job_id, step_id=step_id)
