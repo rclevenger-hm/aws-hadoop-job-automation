@@ -29,3 +29,9 @@ def runtime():
                       cfg['daily_limit'], cfg['rate_limit'], cfg['retention'])
         _SERVICE = Service(store, Emr(boto3.client('emr', config=emr_config), boto3.client('s3', config=common)), cfg['profiles'], cfg['prefix'])
     return _SERVICE
+
+
+def response(status, value, request_id):
+    return {'statusCode': status, 'headers': {'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'X-Request-Id': request_id,
+                                            **({'Retry-After': '60'} if status == 429 else {})},
+            'body': json.dumps(value, default=lambda v: int(v) if isinstance(v, Decimal) else str(v))}
