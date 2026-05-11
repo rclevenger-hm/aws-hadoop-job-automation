@@ -35,3 +35,50 @@ def response(status, value, request_id):
     return {'statusCode': status, 'headers': {'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'X-Request-Id': request_id,
                                             **({'Retry-After': '60'} if status == 429 else {})},
             'body': json.dumps(value, default=lambda v: int(v) if isinstance(v, Decimal) else str(v))}
+
+
+def api_handler(event, context):
+    request_id = getattr(context, 'aws_request_id', 'unknown')
+    status = 500
+    try:
+        caller = principal(event)
+        service = runtime()
+        tenant = digest(caller)
+        service.store.request_limit(tenant)
+        method, route = event.get('httpMethod'), event.get('resource')
+        query = event.get('queryStringParameters') or {}
+        job_id = (event.get('pathParameters') or {}).get('job_id')
+        result, status = None, 200
+        if method == 'POST' and route == '/jobs':
+            headers = {k.lower(): v for k, v in (event.get('headers') or {}).items()}
+            result, created = service.submit(caller, headers.get('idempotency-key'), body(event))
+            status = 202 if created else 200
+        elif method == 'GET' and route == '/jobs':
+            if query.get('status') and query['status'] not in STATES:
+                raise ApiError(400, 'INVALID_STATUS', 'Unknown job status')
+            jobs, cursor = service.store.history(tenant, integer(query.get('limit'), 20, 100), query.get('cursor'), query.get('status'))
+            result = {'jobs': [public(j) for j in jobs], 'next_cursor': cursor}
+        elif method == 'GET' and route == '/jobs/{job_id}':
+            result = public(service.owned(caller, job_id))
+        elif method == 'POST' and route == '/jobs/{job_id}/cancel':
+            result = service.cancel(caller, job_id)
+            status = 202 if result['status'] == 'CANCEL_REQUESTED' else 200
+        elif method == 'GET' and route == '/jobs/{job_id}/logs':
+            result = service.emr.logs(service.owned(caller, job_id), query.get('stream', 'stdout'), integer(query.get('limit'), 16384, 65536))
+        elif method == 'GET' and route == '/usage':
+            result = service.store.usage(tenant)
+        else:
+            raise ApiError(404, 'NOT_FOUND', 'Route not found')
+        return response(status, result, request_id)
+    except ApiError as exc:
+        status = exc.status
+        result = response(status, {'code': exc.code, 'error': str(exc), 'request_id': request_id}, request_id)
+        if exc.code == 'DAILY_LIMIT':
+            result['headers']['Retry-After'] = str(86400 - int(time.time()) % 86400)
+        return result
+    except Exception as exc:
+        status = 503
+        LOGGER.error(json.dumps({'event': 'api_error', 'request_id': request_id, 'error_type': type(exc).__name__}))
+        return response(status, {'code': 'SERVICE_UNAVAILABLE', 'error': 'Service temporarily unavailable', 'request_id': request_id}, request_id)
+    finally:
+        LOGGER.info(json.dumps({'event': 'api_request', 'request_id': request_id, 'status': status}))
