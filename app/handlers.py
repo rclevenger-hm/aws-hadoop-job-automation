@@ -82,3 +82,20 @@ def api_handler(event, context):
         return response(status, {'code': 'SERVICE_UNAVAILABLE', 'error': 'Service temporarily unavailable', 'request_id': request_id}, request_id)
     finally:
         LOGGER.info(json.dumps({'event': 'api_request', 'request_id': request_id, 'status': status}))
+
+
+def worker_handler(event, context):
+    failures = []
+    for record in event.get('Records', []):
+        try:
+            payload = record['body']
+            if not isinstance(payload, str) or len(payload) > 1024:
+                raise ValueError('Invalid queue message')
+            message = json.loads(payload)
+            if not isinstance(message, dict) or set(message) != {'tenant', 'job_id'}:
+                raise ValueError('Invalid queue message')
+            runtime().process(message)
+        except Exception as exc:
+            LOGGER.error(json.dumps({'event': 'worker_error', 'error_type': type(exc).__name__}))
+            failures.append({'itemIdentifier': record['messageId']})
+    return {'batchItemFailures': failures}
