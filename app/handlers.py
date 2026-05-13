@@ -99,3 +99,11 @@ def worker_handler(event, context):
             LOGGER.error(json.dumps({'event': 'worker_error', 'error_type': type(exc).__name__}))
             failures.append({'itemIdentifier': record['messageId']})
     return {'batchItemFailures': failures}
+
+
+def reconcile_handler(event, context):
+    result = runtime().reconcile(context.get_remaining_time_in_millis)
+    LOGGER.info(json.dumps({'event': 'reconcile_complete', **result}))
+    if result['failed']:
+        raise RuntimeError('Reconciliation had failures; inspect IAM, cluster and service health')
+    return result
