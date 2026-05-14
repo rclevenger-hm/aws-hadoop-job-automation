@@ -18,3 +18,8 @@ OTHER = 'arn:aws:iam::123456789012:role/OtherConsumer'
 @pytest.fixture
 def profiles():
     return load_profiles(open('examples/profiles.json').read())
+
+
+@pytest.fixture
+def payload():
+    return json.load(open('examples/job.json'))
