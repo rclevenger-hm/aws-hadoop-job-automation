@@ -47,3 +47,8 @@ def env(monkeypatch, profiles):
         emr.cancel.return_value = True
         service = Service(store, emr, copy.deepcopy(profiles), 'hadoop-dev')
         yield SimpleNamespace(store=store, service=service, emr=emr, clock=clock, table=table, sqs=sqs)
+
+
+def event(method='POST', resource='/jobs', value=None, caller=CALLER, **kwargs):
+    return {'httpMethod': method, 'resource': resource, 'headers': {'Idempotency-Key': 'valid-key-123'},
+            'requestContext': {'identity': {'userArn': caller}}, 'body': json.dumps(value), **kwargs}
