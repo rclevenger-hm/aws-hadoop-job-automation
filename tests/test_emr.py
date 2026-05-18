@@ -30,3 +30,12 @@ def test_paginated_reconciliation_uses_exact_correlation_name(env, payload):
     matches, marker = Emr(client, None).find(job)
     assert matches == ['s-FOUND', 's-OLD'] and marker == 'again'
     client.list_steps.assert_called_once_with(ClusterId='j-EXAMPLE123', Marker='next')
+
+
+@pytest.mark.parametrize('remote,local', [('PENDING','SUBMITTED'),('RUNNING','RUNNING'),('COMPLETED','SUCCEEDED'),('FAILED','FAILED'),('INTERRUPTED','FAILED'),('CANCEL_PENDING','CANCEL_REQUESTED'),('CANCELLED','CANCELLED')])
+def test_remote_states(env, payload, remote, local):
+    job = create(env, payload)
+    job['step_id'] = 's-STEP'
+    client = Mock()
+    client.describe_step.return_value = {'Step': {'Status': {'State': remote}}}
+    assert Emr(client, None).status(job) == local
