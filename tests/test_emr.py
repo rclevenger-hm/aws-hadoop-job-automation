@@ -60,3 +60,15 @@ def test_log_gzip_read_and_decompression_are_bounded(env, payload):
     assert s3.get_object.call_args.kwargs['Range'] == f'bytes=0-{MAX_LOG}'
     assert s3.get_object.call_args.kwargs['Key'] == 'clusters/j-EXAMPLE123/steps/s-STEP/stdout.gz'
     assert stream._raw_stream.closed
+
+
+def test_log_missing_is_explicit_not_job_failure(env, payload):
+    job = create(env, payload)
+    job['step_id'] = 's-STEP'
+    s3 = boto3.client('s3', region_name='us-east-1')
+    with Stubber(s3) as stub:
+        stub.add_client_error('get_object', service_error_code='NoSuchKey')
+        stub.add_client_error('get_object', service_error_code='NoSuchKey')
+        with pytest.raises(ApiError) as error:
+            Emr(None, s3).logs(job, 'stderr', 1024)
+        assert error.value.code == 'LOG_NOT_READY'
