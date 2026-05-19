@@ -39,3 +39,10 @@ def test_remote_states(env, payload, remote, local):
     client = Mock()
     client.describe_step.return_value = {'Step': {'Status': {'State': remote}}}
     assert Emr(client, None).status(job) == local
+
+
+def test_log_is_owned_before_any_s3_access(env, payload):
+    job = create(env, payload)
+    with pytest.raises(ApiError):
+        env.service.owned('arn:aws:iam::123456789012:role/Other', job['job_id'])
+    env.emr.logs.assert_not_called()
