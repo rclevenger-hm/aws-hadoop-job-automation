@@ -46,3 +46,17 @@ def test_log_is_owned_before_any_s3_access(env, payload):
     with pytest.raises(ApiError):
         env.service.owned('arn:aws:iam::123456789012:role/Other', job['job_id'])
     env.emr.logs.assert_not_called()
+
+
+def test_log_gzip_read_and_decompression_are_bounded(env, payload):
+    job = create(env, payload)
+    job['step_id'] = 's-STEP'
+    s3 = Mock()
+    raw = gzip.compress(b'a' * (MAX_LOG * 8))
+    stream = StreamingBody(io.BytesIO(raw), len(raw))
+    s3.get_object.return_value = {'Body': stream}
+    result = Emr(None, s3).logs(job, 'stdout', 1024)
+    assert result['text'] == 'a' * 1024 and result['truncated']
+    assert s3.get_object.call_args.kwargs['Range'] == f'bytes=0-{MAX_LOG}'
+    assert s3.get_object.call_args.kwargs['Key'] == 'clusters/j-EXAMPLE123/steps/s-STEP/stdout.gz'
+    assert stream._raw_stream.closed
