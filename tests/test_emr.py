@@ -72,3 +72,12 @@ def test_log_missing_is_explicit_not_job_failure(env, payload):
         with pytest.raises(ApiError) as error:
             Emr(None, s3).logs(job, 'stderr', 1024)
         assert error.value.code == 'LOG_NOT_READY'
+
+
+def test_log_plaintext_fallback(env, payload):
+    from botocore.exceptions import ClientError
+    job = create(env, payload)
+    job['step_id'] = 's-STEP'
+    s3 = Mock()
+    s3.get_object.side_effect = [ClientError({'Error': {'Code': 'NoSuchKey'}}, 'GetObject'), {'Body': StreamingBody(io.BytesIO(b'hello'), 5)}]
+    assert Emr(None, s3).logs(job, 'stdout', 1024)['text'] == 'hello'
