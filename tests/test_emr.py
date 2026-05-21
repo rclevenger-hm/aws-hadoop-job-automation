@@ -81,3 +81,10 @@ def test_log_plaintext_fallback(env, payload):
     s3 = Mock()
     s3.get_object.side_effect = [ClientError({'Error': {'Code': 'NoSuchKey'}}, 'GetObject'), {'Body': StreamingBody(io.BytesIO(b'hello'), 5)}]
     assert Emr(None, s3).logs(job, 'stdout', 1024)['text'] == 'hello'
+
+
+def test_invalid_log_stream_cannot_select_other_keys(env, payload):
+    job = create(env, payload)
+    job['step_id'] = 's-STEP'
+    with pytest.raises(ApiError):
+        Emr(None, Mock()).logs(job, '../../other', 1024)
