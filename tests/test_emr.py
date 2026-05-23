@@ -88,3 +88,11 @@ def test_invalid_log_stream_cannot_select_other_keys(env, payload):
     job['step_id'] = 's-STEP'
     with pytest.raises(ApiError):
         Emr(None, Mock()).logs(job, '../../other', 1024)
+
+
+def test_malformed_step_response_is_ambiguous(env, payload):
+    job = create(env, payload)
+    client = Mock()
+    client.add_job_flow_steps.return_value = {'StepIds': []}
+    with pytest.raises(RuntimeError, match='ambiguous'):
+        Emr(client, None).submit(job)
