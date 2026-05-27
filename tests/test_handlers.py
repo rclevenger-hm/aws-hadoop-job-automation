@@ -43,3 +43,15 @@ def test_internal_error_does_not_leak_payload(env, payload, monkeypatch, caplog)
     assert response['statusCode'] == 503
     assert 'secret-password' not in response['body'] + caplog.text
     assert result['request_id'] == 'request-test'
+
+
+def test_partial_sqs_failure_reports_only_failed_message(env, payload, monkeypatch):
+    monkeypatch.setattr(handlers, '_SERVICE', env.service)
+    good, _ = env.service.submit(CALLER, 'example-key-123', payload)
+    from app.validation import digest
+    result = handlers.worker_handler({'Records': [
+        {'messageId': 'good', 'body': json.dumps({'tenant': digest(CALLER), 'job_id': good['job_id']})},
+        {'messageId': 'bad', 'body': '{'},
+    ]}, CONTEXT)
+    assert result == {'batchItemFailures': [{'itemIdentifier': 'bad'}]}
+    env.emr.submit.assert_called_once()
