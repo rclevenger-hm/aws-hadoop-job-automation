@@ -35,3 +35,11 @@ def test_unauthenticated_request_never_initializes_runtime(monkeypatch):
     response = handlers.api_handler({}, CONTEXT)
     assert response['statusCode'] == 401
     factory.assert_not_called()
+
+
+def test_internal_error_does_not_leak_payload(env, payload, monkeypatch, caplog):
+    env.store.request_limit = Mock(side_effect=RuntimeError('secret-password'))
+    response, result = api(env, monkeypatch, event(value=payload))
+    assert response['statusCode'] == 503
+    assert 'secret-password' not in response['body'] + caplog.text
+    assert result['request_id'] == 'request-test'
