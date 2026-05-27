@@ -27,3 +27,11 @@ def test_submit_replay_and_status_api(env, payload, monkeypatch):
     assert response['statusCode'] == 200 and first['job_id'] == second['job_id']
     response, status = api(env, monkeypatch, event('GET', '/jobs/{job_id}', pathParameters={'job_id': first['job_id']}))
     assert status['status'] == 'QUEUED' and 'request' not in status and 'profile' in status
+
+
+def test_unauthenticated_request_never_initializes_runtime(monkeypatch):
+    factory = Mock(side_effect=AssertionError('must not initialize'))
+    monkeypatch.setattr(handlers, 'runtime', factory)
+    response = handlers.api_handler({}, CONTEXT)
+    assert response['statusCode'] == 401
+    factory.assert_not_called()
