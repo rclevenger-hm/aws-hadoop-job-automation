@@ -69,3 +69,13 @@ def test_reconcile_failures_raise_for_lambda_alarm(env, monkeypatch):
     env.service.reconcile = Mock(return_value={'failed': 1, 'processed': 2})
     with pytest.raises(RuntimeError):
         handlers.reconcile_handler({}, SimpleNamespace(get_remaining_time_in_millis=lambda: 100000))
+
+
+def test_production_emr_client_disables_automatic_retries(env, monkeypatch, profiles):
+    monkeypatch.setenv('CLUSTER_PROFILES', json.dumps(profiles))
+    monkeypatch.setenv('JOBS_TABLE', 'jobs')
+    monkeypatch.setenv('JOBS_QUEUE_URL', env.store.queue_url)
+    monkeypatch.setenv('SERVICE_NAME', 'hadoop-dev')
+    service = handlers.runtime()
+    assert service.emr.client.meta.config.retries['total_max_attempts'] == 1
+    assert service.emr.client.meta.config.read_timeout == 8
