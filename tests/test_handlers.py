@@ -79,3 +79,14 @@ def test_production_emr_client_disables_automatic_retries(env, monkeypatch, prof
     service = handlers.runtime()
     assert service.emr.client.meta.config.retries['total_max_attempts'] == 1
     assert service.emr.client.meta.config.read_timeout == 8
+
+
+def test_daily_allowance_has_midnight_retry_after(env, payload, monkeypatch):
+    env.store.daily_limit = 1
+    monkeypatch.setattr(handlers.time, 'time', lambda: 1780315210)
+    api(env, monkeypatch, event(value=payload))
+    second = event(value=payload)
+    second['headers']['Idempotency-Key'] = 'different-key-123'
+    response, result = api(env, monkeypatch, second)
+    assert response['statusCode'] == 429 and result['code'] == 'DAILY_LIMIT'
+    assert int(response['headers']['Retry-After']) == 86400 - 1780315210 % 86400
