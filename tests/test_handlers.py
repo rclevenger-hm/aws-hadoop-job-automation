@@ -62,3 +62,10 @@ def test_list_and_usage(env, payload, monkeypatch):
     _, listed = api(env, monkeypatch, event('GET', '/jobs'))
     _, usage = api(env, monkeypatch, event('GET', '/usage'))
     assert len(listed['jobs']) == 1 and usage['jobs'] == 1
+
+
+def test_reconcile_failures_raise_for_lambda_alarm(env, monkeypatch):
+    monkeypatch.setattr(handlers, '_SERVICE', env.service)
+    env.service.reconcile = Mock(return_value={'failed': 1, 'processed': 2})
+    with pytest.raises(RuntimeError):
+        handlers.reconcile_handler({}, SimpleNamespace(get_remaining_time_in_millis=lambda: 100000))
