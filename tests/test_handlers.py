@@ -55,3 +55,10 @@ def test_partial_sqs_failure_reports_only_failed_message(env, payload, monkeypat
     ]}, CONTEXT)
     assert result == {'batchItemFailures': [{'itemIdentifier': 'bad'}]}
     env.emr.submit.assert_called_once()
+
+
+def test_list_and_usage(env, payload, monkeypatch):
+    api(env, monkeypatch, event(value=payload))
+    _, listed = api(env, monkeypatch, event('GET', '/jobs'))
+    _, usage = api(env, monkeypatch, event('GET', '/usage'))
+    assert len(listed['jobs']) == 1 and usage['jobs'] == 1
