@@ -35,3 +35,12 @@ def test_crashed_submitter_reconciles_by_exact_name(env, payload):
     env.service.reconcile_one(job['pk'], job['job_id'])
     assert env.store.get(job['pk'], job['job_id'])['step_id'] == 's-FOUND'
     env.emr.submit.assert_not_called()
+
+
+def test_missing_remote_step_requires_review_without_retry(env, payload):
+    job = create(env, payload)
+    env.store.replace(job, status='SUBMISSION_UNKNOWN', submitted_at=env.clock[0])
+    env.clock[0] += 86401
+    env.service.reconcile_one(job['pk'], job['job_id'])
+    assert env.store.get(job['pk'], job['job_id'])['status'] == 'NEEDS_REVIEW'
+    env.emr.submit.assert_not_called()
