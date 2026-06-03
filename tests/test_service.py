@@ -80,3 +80,11 @@ def test_queue_publish_failure_is_recoverable(env, payload, monkeypatch):
     env.clock[0] += 121
     env.service.reconcile_one(jobs[0]['pk'], jobs[0]['job_id'])
     assert env.sqs.receive_message(QueueUrl=env.store.queue_url).get('Messages')
+
+
+def test_cancel_before_dispatch_prevents_execution(env, payload):
+    job = create(env, payload)
+    assert env.service.cancel(CALLER, job['job_id'])['status'] == 'CANCELLED'
+    env.service.process(message(job))
+    env.emr.submit.assert_not_called()
+    assert env.service.cancel(CALLER, job['job_id'])['status'] == 'CANCELLED'
