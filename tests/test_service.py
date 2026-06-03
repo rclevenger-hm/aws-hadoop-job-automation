@@ -58,3 +58,12 @@ def test_reconciliation_persists_page_and_matches(env, payload):
     env.emr.find.return_value = (['s-FIRST'], '')
     env.service.reconcile_one(job['pk'], job['job_id'])
     assert env.store.get(job['pk'], job['job_id'])['step_id'] == 's-FIRST'
+
+
+def test_multiple_correlation_matches_require_review(env, payload):
+    job = create(env, payload)
+    env.store.replace(job, status='SUBMITTING', submitted_at=env.clock[0])
+    env.clock[0] += 121
+    env.emr.find.return_value = (['s-FIRST', 's-SECOND'], '')
+    env.service.reconcile_one(job['pk'], job['job_id'])
+    assert env.store.get(job['pk'], job['job_id'])['reason'] == 'MULTIPLE_MATCHING_STEPS'
