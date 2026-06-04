@@ -88,3 +88,17 @@ def test_cancel_before_dispatch_prevents_execution(env, payload):
     env.service.process(message(job))
     env.emr.submit.assert_not_called()
     assert env.service.cancel(CALLER, job['job_id'])['status'] == 'CANCELLED'
+
+
+def test_cancellation_racing_submission_is_preserved(env, payload):
+    job = create(env, payload)
+    def submit(_):
+        env.service.cancel(CALLER, job['job_id'])
+        return 's-RACING'
+    env.emr.submit.side_effect = submit
+    env.service.process(message(job))
+    current = env.store.get(job['pk'], job['job_id'])
+    assert current['status'] == 'CANCEL_REQUESTED' and current['step_id'] == 's-RACING'
+    env.service.reconcile_one(job['pk'], job['job_id'])
+    env.emr.cancel.assert_called_once()
+    assert env.store.get(job['pk'], job['job_id'])['status'] == 'CANCEL_REQUESTED'
