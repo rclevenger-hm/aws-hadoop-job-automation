@@ -102,3 +102,16 @@ def test_cancellation_racing_submission_is_preserved(env, payload):
     env.service.reconcile_one(job['pk'], job['job_id'])
     env.emr.cancel.assert_called_once()
     assert env.store.get(job['pk'], job['job_id'])['status'] == 'CANCEL_REQUESTED'
+
+
+def test_cancel_acknowledgment_is_not_terminal_cancellation(env, payload):
+    job = create(env, payload)
+    env.service.process(message(job))
+    env.service.cancel(CALLER, job['job_id'])
+    env.service.reconcile_one(job['pk'], job['job_id'])
+    current = env.store.get(job['pk'], job['job_id'])
+    assert current['cancel_accepted'] and current['status'] == 'CANCEL_REQUESTED'
+    env.clock[0] += 121
+    env.emr.status.return_value = 'SUCCEEDED'
+    env.service.reconcile_one(job['pk'], job['job_id'])
+    assert env.store.get(job['pk'], job['job_id'])['status'] == 'SUCCEEDED'
