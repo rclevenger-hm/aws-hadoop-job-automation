@@ -115,3 +115,11 @@ def test_cancel_acknowledgment_is_not_terminal_cancellation(env, payload):
     env.emr.status.return_value = 'SUCCEEDED'
     env.service.reconcile_one(job['pk'], job['job_id'])
     assert env.store.get(job['pk'], job['job_id'])['status'] == 'SUCCEEDED'
+
+
+def test_tenant_cannot_read_or_cancel_other_job(env, payload):
+    job = create(env, payload)
+    for action in [env.service.owned, env.service.cancel]:
+        with pytest.raises(ApiError) as error:
+            action(OTHER, job['job_id'])
+        assert error.value.status == 404
