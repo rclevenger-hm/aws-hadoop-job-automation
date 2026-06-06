@@ -123,3 +123,9 @@ def test_tenant_cannot_read_or_cancel_other_job(env, payload):
         with pytest.raises(ApiError) as error:
             action(OTHER, job['job_id'])
         assert error.value.status == 404
+
+
+def test_reconciler_respects_deadline(env, payload):
+    create(env, payload)
+    env.clock[0] += 121
+    assert env.service.reconcile(lambda: 1000) == {'processed': 0, 'failed': 0}
