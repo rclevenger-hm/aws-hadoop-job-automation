@@ -129,3 +129,13 @@ def test_reconciler_respects_deadline(env, payload):
     create(env, payload)
     env.clock[0] += 121
     assert env.service.reconcile(lambda: 1000) == {'processed': 0, 'failed': 0}
+
+
+def test_reconciler_counts_errors_and_continues(env, payload):
+    job = create(env, payload)
+    env.service.process(message(job))
+    env.clock[0] += 121
+    env.emr.status.side_effect = RuntimeError('api down')
+    result = env.service.reconcile()
+    assert result['failed'] == 1
+    assert env.store.get(job['pk'], job['job_id'])['next_check'] > env.clock[0]
