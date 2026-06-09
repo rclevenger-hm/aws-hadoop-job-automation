@@ -158,3 +158,11 @@ def test_stale_queued_message_after_admission_expiry(env, payload):
     env.service.process(message(job))
     env.emr.submit.assert_not_called()
     assert env.store.get(job['pk'], job['job_id'])['status'] == 'FAILED'
+
+
+def test_polling_never_rewrites_terminal_job(env, payload):
+    job = create(env, payload)
+    env.store.replace(job, status='SUCCEEDED')
+    env.clock[0] += 121
+    env.service.reconcile_one(job['pk'], job['job_id'])
+    env.emr.status.assert_not_called()
