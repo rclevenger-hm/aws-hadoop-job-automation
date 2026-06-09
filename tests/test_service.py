@@ -139,3 +139,13 @@ def test_reconciler_counts_errors_and_continues(env, payload):
     result = env.service.reconcile()
     assert result['failed'] == 1
     assert env.store.get(job['pk'], job['job_id'])['next_check'] > env.clock[0]
+
+
+def test_crash_before_emr_call_never_automatically_resubmits(env, payload):
+    job = create(env, payload)
+    env.store.replace(job, status='SUBMITTING', submitted_at=env.clock[0])
+    env.service.process(message(job))
+    env.clock[0] += 121
+    env.service.reconcile_one(job['pk'], job['job_id'])
+    assert env.store.get(job['pk'], job['job_id'])['status'] == 'SUBMISSION_UNKNOWN'
+    env.emr.submit.assert_not_called()
