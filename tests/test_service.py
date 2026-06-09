@@ -149,3 +149,12 @@ def test_crash_before_emr_call_never_automatically_resubmits(env, payload):
     env.service.reconcile_one(job['pk'], job['job_id'])
     assert env.store.get(job['pk'], job['job_id'])['status'] == 'SUBMISSION_UNKNOWN'
     env.emr.submit.assert_not_called()
+
+
+def test_stale_queued_message_after_admission_expiry(env, payload):
+    job = create(env, payload)
+    env.clock[0] += 86401
+    env.service.reconcile_one(job['pk'], job['job_id'])
+    env.service.process(message(job))
+    env.emr.submit.assert_not_called()
+    assert env.store.get(job['pk'], job['job_id'])['status'] == 'FAILED'
