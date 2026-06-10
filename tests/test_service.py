@@ -166,3 +166,11 @@ def test_polling_never_rewrites_terminal_job(env, payload):
     env.clock[0] += 121
     env.service.reconcile_one(job['pk'], job['job_id'])
     env.emr.status.assert_not_called()
+
+
+def test_expired_delivery_cannot_execute_before_recovery_runs(env, payload):
+    job = create(env, payload)
+    env.clock[0] += 86400
+    env.service.process(message(job))
+    env.emr.submit.assert_not_called()
+    assert env.store.get(job['pk'], job['job_id'])['status'] == 'FAILED'
