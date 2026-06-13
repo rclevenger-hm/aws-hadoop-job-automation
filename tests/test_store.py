@@ -17,3 +17,12 @@ def test_duplicate_submission_preserves_one_allowance(env, payload):
     second = create(env, payload)
     assert first['job_id'] == second['job_id']
     assert env.store.usage(digest(CALLER))['jobs'] == 1
+
+
+def test_changed_payload_key_conflicts(env, payload):
+    create(env, payload)
+    payload['arguments'] = ['new']
+    with pytest.raises(ApiError) as error:
+        create(env, payload)
+    assert error.value.status == 409
+    assert env.store.usage(digest(CALLER))['jobs'] == 1
