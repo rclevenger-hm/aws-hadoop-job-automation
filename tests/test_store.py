@@ -43,3 +43,10 @@ def test_competing_claims_have_one_winner(env, payload):
     with ThreadPoolExecutor(max_workers=2) as pool:
         results = list(pool.map(lambda _: env.store.replace(job, status='SUBMITTING'), range(2)))
     assert sum(r is not None for r in results) == 1
+
+
+def test_stale_write_cannot_regress_state(env, payload):
+    job = create(env, payload)
+    latest = env.store.replace(job, status='RUNNING')
+    assert env.store.replace(job, status='QUEUED') is None
+    assert env.store.get(job['pk'], job['job_id'])['version'] == latest['version']
