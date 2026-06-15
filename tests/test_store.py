@@ -26,3 +26,13 @@ def test_changed_payload_key_conflicts(env, payload):
         create(env, payload)
     assert error.value.status == 409
     assert env.store.usage(digest(CALLER))['jobs'] == 1
+
+
+def test_quota_and_job_creation_are_atomic(env, payload):
+    env.store.daily_limit = 1
+    first = create(env, payload)
+    with pytest.raises(ApiError) as error:
+        create(env, payload, 'job-key-002')
+    assert error.value.status == 429
+    assert len(env.store.history(digest(CALLER))[0]) == 1
+    assert create(env, payload)['job_id'] == first['job_id']
