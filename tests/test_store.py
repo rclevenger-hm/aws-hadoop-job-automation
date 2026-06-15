@@ -36,3 +36,10 @@ def test_quota_and_job_creation_are_atomic(env, payload):
     assert error.value.status == 429
     assert len(env.store.history(digest(CALLER))[0]) == 1
     assert create(env, payload)['job_id'] == first['job_id']
+
+
+def test_competing_claims_have_one_winner(env, payload):
+    job = create(env, payload)
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        results = list(pool.map(lambda _: env.store.replace(job, status='SUBMITTING'), range(2)))
+    assert sum(r is not None for r in results) == 1
