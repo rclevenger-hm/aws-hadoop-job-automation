@@ -50,3 +50,13 @@ def test_stale_write_cannot_regress_state(env, payload):
     latest = env.store.replace(job, status='RUNNING')
     assert env.store.replace(job, status='QUEUED') is None
     assert env.store.get(job['pk'], job['job_id'])['version'] == latest['version']
+
+
+def test_terminal_ttl_and_active_index_removal(env, payload):
+    job = create(env, payload)
+    assert 'expires_at' not in job
+    done = env.store.replace(job, status='SUCCEEDED')
+    assert 'active_pk' not in done and 'active_sk' not in done
+    assert done['expires_at'] == env.clock[0] + 30 * 86400
+    env.clock[0] = done['expires_at']
+    assert env.store.get(job['pk'], job['job_id']) is None
