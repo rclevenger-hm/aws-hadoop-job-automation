@@ -60,3 +60,12 @@ def test_terminal_ttl_and_active_index_removal(env, payload):
     assert done['expires_at'] == env.clock[0] + 30 * 86400
     env.clock[0] = done['expires_at']
     assert env.store.get(job['pk'], job['job_id']) is None
+
+
+def test_expired_key_not_silently_reused_before_ttl(env, payload):
+    job = create(env, payload)
+    done = env.store.replace(job, status='SUCCEEDED')
+    env.clock[0] = done['expires_at']
+    with pytest.raises(ApiError) as error:
+        create(env, payload)
+    assert error.value.code == 'EXPIRED_KEY'
