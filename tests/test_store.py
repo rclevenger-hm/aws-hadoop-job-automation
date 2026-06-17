@@ -69,3 +69,14 @@ def test_expired_key_not_silently_reused_before_ttl(env, payload):
     with pytest.raises(ApiError) as error:
         create(env, payload)
     assert error.value.code == 'EXPIRED_KEY'
+
+
+def test_rate_limit_atomic_and_resets(env):
+    env.store.rate_limit = 2
+    env.store.request_limit('caller')
+    env.store.request_limit('caller')
+    with pytest.raises(ApiError) as error:
+        env.store.request_limit('caller')
+    assert error.value.code == 'RATE_LIMIT'
+    env.clock[0] += 60
+    env.store.request_limit('caller')
