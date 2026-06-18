@@ -80,3 +80,20 @@ def test_rate_limit_atomic_and_resets(env):
     assert error.value.code == 'RATE_LIMIT'
     env.clock[0] += 60
     env.store.request_limit('caller')
+
+
+def test_history_pagination_bound_to_caller_and_filter(env, payload):
+    for i in range(3):
+        create(env, payload, f'job-key-00{i}')
+        env.clock[0] += 1
+    first, cursor = env.store.history(digest(CALLER), limit=1)
+    second, _ = env.store.history(digest(CALLER), limit=1, cursor=cursor)
+    assert first[0]['job_id'] != second[0]['job_id']
+    with pytest.raises(ApiError):
+        env.store.history('another', cursor=cursor)
+    with pytest.raises(ApiError):
+        env.store.history(digest(CALLER), cursor=cursor, status='RUNNING')
+    decoded = json.loads(base64.urlsafe_b64decode(cursor))
+    decoded['key']['pk'] = 'another'
+    with pytest.raises(ApiError):
+        env.store.history(digest(CALLER), cursor=base64.urlsafe_b64encode(json.dumps(decoded).encode()).decode())
