@@ -97,3 +97,10 @@ def test_history_pagination_bound_to_caller_and_filter(env, payload):
     decoded['key']['pk'] = 'another'
     with pytest.raises(ApiError):
         env.store.history(digest(CALLER), cursor=base64.urlsafe_b64encode(json.dumps(decoded).encode()).decode())
+
+
+def test_empty_filtered_pages_keep_continuation(env, payload):
+    create(env, payload, 'job-key-001')
+    create(env, payload, 'job-key-002')
+    jobs, cursor = env.store.history(digest(CALLER), limit=1, status='RUNNING')
+    assert jobs == [] and cursor
