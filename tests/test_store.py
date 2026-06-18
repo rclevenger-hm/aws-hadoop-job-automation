@@ -104,3 +104,11 @@ def test_empty_filtered_pages_keep_continuation(env, payload):
     create(env, payload, 'job-key-002')
     jobs, cursor = env.store.history(digest(CALLER), limit=1, status='RUNNING')
     assert jobs == [] and cursor
+
+
+def test_poll_claim_ignores_stale_index_and_concurrent_claim(env, payload):
+    job = create(env, payload)
+    assert env.store.claim_poll(job['pk'], job['job_id']) is None
+    env.clock[0] += 121
+    assert env.store.claim_poll(job['pk'], job['job_id'])
+    assert env.store.claim_poll(job['pk'], job['job_id']) is None
