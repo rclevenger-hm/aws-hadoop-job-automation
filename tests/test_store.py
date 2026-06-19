@@ -112,3 +112,9 @@ def test_poll_claim_ignores_stale_index_and_concurrent_claim(env, payload):
     env.clock[0] += 121
     assert env.store.claim_poll(job['pk'], job['job_id'])
     assert env.store.claim_poll(job['pk'], job['job_id']) is None
+
+
+def test_daily_counter_resets_at_utc_midnight(env, payload):
+    create(env, payload)
+    env.clock[0] += 86400
+    assert env.store.usage(digest(CALLER))['jobs'] == 0
