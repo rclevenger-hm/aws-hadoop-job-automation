@@ -26,3 +26,9 @@ def test_java_arguments_are_data_not_shell(payload, profiles):
 def test_profile_authorization(payload, profiles):
     with pytest.raises(ApiError, match='not authorized'):
         job_request(payload, profiles, OTHER)
+
+
+def test_unknown_request_fields_are_rejected(payload, profiles):
+    payload['execution_role_arn'] = 'attacker'
+    with pytest.raises(ApiError, match='Unknown'):
+        job_request(payload, profiles, CALLER)
