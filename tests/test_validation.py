@@ -21,3 +21,8 @@ def test_invalid_fields_fail_before_execution(payload, profiles, field, value):
 def test_java_arguments_are_data_not_shell(payload, profiles):
     payload['arguments'] = ['$(touch /tmp/owned)', 'two words', 'a; b']
     assert job_request(payload, profiles, CALLER)['arguments'] == payload['arguments']
+
+
+def test_profile_authorization(payload, profiles):
+    with pytest.raises(ApiError, match='not authorized'):
+        job_request(payload, profiles, OTHER)
