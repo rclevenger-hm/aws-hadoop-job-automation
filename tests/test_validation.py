@@ -32,3 +32,9 @@ def test_unknown_request_fields_are_rejected(payload, profiles):
     payload['execution_role_arn'] = 'attacker'
     with pytest.raises(ApiError, match='Unknown'):
         job_request(payload, profiles, CALLER)
+
+
+def test_aggregate_emr_limit(payload, profiles):
+    payload['arguments'] = ['x' * 1024] * 10
+    with pytest.raises(ApiError, match='10240'):
+        job_request(payload, profiles, CALLER)
