@@ -16,3 +16,8 @@ def test_invalid_fields_fail_before_execution(payload, profiles, field, value):
     payload[field] = value
     with pytest.raises(ApiError):
         job_request(payload, profiles, CALLER)
+
+
+def test_java_arguments_are_data_not_shell(payload, profiles):
+    payload['arguments'] = ['$(touch /tmp/owned)', 'two words', 'a; b']
+    assert job_request(payload, profiles, CALLER)['arguments'] == payload['arguments']
