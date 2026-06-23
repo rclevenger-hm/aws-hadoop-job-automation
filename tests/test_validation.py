@@ -43,3 +43,9 @@ def test_aggregate_emr_limit(payload, profiles):
 def test_base64_and_utf8_body():
     encoded = base64.b64encode(json.dumps({'text': '雪'}).encode()).decode()
     assert body({'body': encoded, 'isBase64Encoded': True}) == {'text': '雪'}
+
+
+@pytest.mark.parametrize('raw', ['null', '[]', 'NaN', '{', '{"x":NaN}'])
+def test_invalid_json_envelopes(raw):
+    with pytest.raises(ApiError):
+        body({'body': raw})
