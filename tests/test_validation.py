@@ -38,3 +38,8 @@ def test_aggregate_emr_limit(payload, profiles):
     payload['arguments'] = ['x' * 1024] * 10
     with pytest.raises(ApiError, match='10240'):
         job_request(payload, profiles, CALLER)
+
+
+def test_base64_and_utf8_body():
+    encoded = base64.b64encode(json.dumps({'text': '雪'}).encode()).decode()
+    assert body({'body': encoded, 'isBase64Encoded': True}) == {'text': '雪'}
