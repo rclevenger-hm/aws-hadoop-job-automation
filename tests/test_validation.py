@@ -56,3 +56,9 @@ def test_body_size_and_invalid_base64():
         body({'body': 'x' * 65537})
     with pytest.raises(ApiError):
         body({'body': '##', 'isBase64Encoded': True})
+
+
+def test_assumed_role_sessions_share_identity():
+    first = principal(event(caller='arn:aws:sts::123456789012:assumed-role/HadoopConsumer/first'))
+    second = principal(event(caller='arn:aws:sts::123456789012:assumed-role/HadoopConsumer/second'))
+    assert first == second == CALLER
