@@ -49,3 +49,10 @@ def test_base64_and_utf8_body():
 def test_invalid_json_envelopes(raw):
     with pytest.raises(ApiError):
         body({'body': raw})
+
+
+def test_body_size_and_invalid_base64():
+    with pytest.raises(ApiError):
+        body({'body': 'x' * 65537})
+    with pytest.raises(ApiError):
+        body({'body': '##', 'isBase64Encoded': True})
