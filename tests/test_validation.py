@@ -62,3 +62,8 @@ def test_assumed_role_sessions_share_identity():
     first = principal(event(caller='arn:aws:sts::123456789012:assumed-role/HadoopConsumer/first'))
     second = principal(event(caller='arn:aws:sts::123456789012:assumed-role/HadoopConsumer/second'))
     assert first == second == CALLER
+
+
+def test_no_spoofed_identity_headers():
+    with pytest.raises(ApiError):
+        principal({'headers': {'userArn': CALLER}, 'requestContext': {'identity': {}}})
