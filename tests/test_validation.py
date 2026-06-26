@@ -67,3 +67,9 @@ def test_assumed_role_sessions_share_identity():
 def test_no_spoofed_identity_headers():
     with pytest.raises(ApiError):
         principal({'headers': {'userArn': CALLER}, 'requestContext': {'identity': {}}})
+
+
+@pytest.mark.parametrize('value', ['-1', '0', '101', '1.2', 'NaN'])
+def test_pagination_bounds(value):
+    with pytest.raises(ApiError):
+        integer(value, 20, 100)
