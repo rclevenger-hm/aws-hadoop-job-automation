@@ -1,0 +1,8 @@
+{
+  "profile": "analytics",
+  "jar_path": "s3://your-job-assets/approved-jars/wordcount.jar",
+  "job_class": "com.example.hadoop.WordCount",
+  "input_path": "s3://your-data/input/sample/",
+  "output_path": "s3://your-data/output/wordcount-run-001/",
+  "arguments": []
+}
