@@ -73,3 +73,10 @@ def test_no_spoofed_identity_headers():
 def test_pagination_bounds(value):
     with pytest.raises(ApiError):
         integer(value, 20, 100)
+
+
+@pytest.mark.parametrize('field,value', [('cluster_id', 'arbitrary'), ('allowed_principals', ['*']), ('jar_prefixes', ['s3://bucket/root']), ('log_uri', 'https://attacker/'), ('jar_prefixes', ['s3://bucket/root/../']), ('input_prefixes', ['s3://bucket/root/*/'])])
+def test_bad_configuration_fails_closed(profiles, field, value):
+    profiles['analytics'][field] = value
+    with pytest.raises(ValueError):
+        load_profiles(json.dumps(profiles))
