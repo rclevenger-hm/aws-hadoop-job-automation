@@ -9,3 +9,8 @@ resource "aws_api_gateway_rest_api_policy" "service" {
     { Effect = "Deny", Principal = "*", Action = "execute-api:Invoke", Resource = "${aws_api_gateway_rest_api.service.execution_arn}/*", Condition = { ArnNotEquals = { "aws:PrincipalArn" = local.consumers } } }
   ] })
 }
+resource "aws_api_gateway_resource" "jobs" {
+  rest_api_id = aws_api_gateway_rest_api.service.id
+  parent_id   = aws_api_gateway_rest_api.service.root_resource_id
+  path_part   = "jobs"
+}
