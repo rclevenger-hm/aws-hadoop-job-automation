@@ -24,3 +24,8 @@ resource "aws_api_gateway_resource" "cancel" {
   parent_id   = aws_api_gateway_resource.job.id
   path_part   = "cancel"
 }
+resource "aws_api_gateway_resource" "logs" {
+  rest_api_id = aws_api_gateway_rest_api.service.id
+  parent_id   = aws_api_gateway_resource.job.id
+  path_part   = "logs"
+}
