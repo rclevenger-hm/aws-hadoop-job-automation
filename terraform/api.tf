@@ -34,3 +34,13 @@ resource "aws_api_gateway_resource" "usage" {
   parent_id   = aws_api_gateway_rest_api.service.root_resource_id
   path_part   = "usage"
 }
+locals {
+  routes = {
+    submit = { id = aws_api_gateway_resource.jobs.id, method = "POST" }
+    list   = { id = aws_api_gateway_resource.jobs.id, method = "GET" }
+    status = { id = aws_api_gateway_resource.job.id, method = "GET" }
+    cancel = { id = aws_api_gateway_resource.cancel.id, method = "POST" }
+    logs   = { id = aws_api_gateway_resource.logs.id, method = "GET" }
+    usage  = { id = aws_api_gateway_resource.usage.id, method = "GET" }
+  }
+}
