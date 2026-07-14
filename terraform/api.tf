@@ -51,3 +51,13 @@ resource "aws_api_gateway_method" "route" {
   http_method   = each.value.method
   authorization = "AWS_IAM"
 }
+resource "aws_api_gateway_integration" "route" {
+  for_each                = local.routes
+  rest_api_id             = aws_api_gateway_rest_api.service.id
+  resource_id             = each.value.id
+  http_method             = aws_api_gateway_method.route[each.key].http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = aws_lambda_function.service["api"].invoke_arn
+  timeout_milliseconds    = 29000
+}
