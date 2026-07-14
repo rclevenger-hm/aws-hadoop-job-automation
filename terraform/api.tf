@@ -61,3 +61,8 @@ resource "aws_api_gateway_integration" "route" {
   uri                     = aws_lambda_function.service["api"].invoke_arn
   timeout_milliseconds    = 29000
 }
+resource "aws_api_gateway_deployment" "service" {
+  rest_api_id = aws_api_gateway_rest_api.service.id
+  triggers    = { redeployment = sha1(jsonencode([aws_api_gateway_method.route, aws_api_gateway_integration.route, aws_api_gateway_rest_api_policy.service.policy])) }
+  lifecycle { create_before_destroy = true }
+}
