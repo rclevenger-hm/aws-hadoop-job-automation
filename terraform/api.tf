@@ -66,3 +66,9 @@ resource "aws_api_gateway_deployment" "service" {
   triggers    = { redeployment = sha1(jsonencode([aws_api_gateway_method.route, aws_api_gateway_integration.route, aws_api_gateway_rest_api_policy.service.policy])) }
   lifecycle { create_before_destroy = true }
 }
+resource "aws_api_gateway_stage" "service" {
+  rest_api_id          = aws_api_gateway_rest_api.service.id
+  deployment_id        = aws_api_gateway_deployment.service.id
+  stage_name           = "v1"
+  xray_tracing_enabled = false
+}
