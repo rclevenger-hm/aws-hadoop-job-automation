@@ -83,3 +83,10 @@ resource "aws_api_gateway_method_settings" "service" {
     throttling_burst_limit = 40
   }
 }
+resource "aws_lambda_permission" "api" {
+  statement_id  = "AllowGatewayInvocation"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.service["api"].function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.service.execution_arn}/*/*"
+}
