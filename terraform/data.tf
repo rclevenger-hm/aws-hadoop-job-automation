@@ -27,3 +27,8 @@ resource "aws_dynamodb_table" "jobs" {
     }
   }
 }
+resource "aws_sqs_queue" "dead_letter" {
+  name                      = "${local.prefix}-dead-letter"
+  message_retention_seconds = 1209600
+  sqs_managed_sse_enabled   = true
+}
