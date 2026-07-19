@@ -39,3 +39,7 @@ resource "aws_sqs_queue" "jobs" {
   sqs_managed_sse_enabled    = true
   redrive_policy             = jsonencode({ deadLetterTargetArn = aws_sqs_queue.dead_letter.arn, maxReceiveCount = 5 })
 }
+resource "aws_sqs_queue_redrive_allow_policy" "dead_letter" {
+  queue_url            = aws_sqs_queue.dead_letter.id
+  redrive_allow_policy = jsonencode({ redrivePermission = "byQueue", sourceQueueArns = [aws_sqs_queue.jobs.arn] })
+}
