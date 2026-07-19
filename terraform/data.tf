@@ -32,3 +32,10 @@ resource "aws_sqs_queue" "dead_letter" {
   message_retention_seconds = 1209600
   sqs_managed_sse_enabled   = true
 }
+resource "aws_sqs_queue" "jobs" {
+  name                       = "${local.prefix}-jobs"
+  visibility_timeout_seconds = 180
+  message_retention_seconds  = 345600
+  sqs_managed_sse_enabled    = true
+  redrive_policy             = jsonencode({ deadLetterTargetArn = aws_sqs_queue.dead_letter.arn, maxReceiveCount = 5 })
+}
