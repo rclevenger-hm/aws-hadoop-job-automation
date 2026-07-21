@@ -24,3 +24,10 @@ resource "aws_lambda_function" "service" {
     }
   }
 }
+resource "aws_lambda_event_source_mapping" "jobs" {
+  event_source_arn        = aws_sqs_queue.jobs.arn
+  function_name           = aws_lambda_function.service["worker"].arn
+  batch_size              = 1
+  function_response_types = ["ReportBatchItemFailures"]
+  scaling_config { maximum_concurrency = 2 }
+}
