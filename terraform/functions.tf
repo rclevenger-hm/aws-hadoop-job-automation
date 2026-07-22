@@ -31,3 +31,7 @@ resource "aws_lambda_event_source_mapping" "jobs" {
   function_response_types = ["ReportBatchItemFailures"]
   scaling_config { maximum_concurrency = 2 }
 }
+resource "aws_cloudwatch_event_rule" "reconcile" {
+  name                = "${local.prefix}-reconcile"
+  schedule_expression = "rate(1 minute)"
+}
