@@ -35,3 +35,11 @@ resource "aws_cloudwatch_event_rule" "reconcile" {
   name                = "${local.prefix}-reconcile"
   schedule_expression = "rate(1 minute)"
 }
+resource "aws_cloudwatch_event_target" "reconcile" {
+  rule = aws_cloudwatch_event_rule.reconcile.name
+  arn  = aws_lambda_function.service["reconcile"].arn
+  retry_policy {
+    maximum_event_age_in_seconds = 300
+    maximum_retry_attempts       = 2
+  }
+}
