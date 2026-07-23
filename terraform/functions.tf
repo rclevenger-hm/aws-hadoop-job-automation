@@ -43,3 +43,10 @@ resource "aws_cloudwatch_event_target" "reconcile" {
     maximum_retry_attempts       = 2
   }
 }
+resource "aws_lambda_permission" "scheduler" {
+  statement_id  = "AllowReconciliationSchedule"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.service["reconcile"].function_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.reconcile.arn
+}
