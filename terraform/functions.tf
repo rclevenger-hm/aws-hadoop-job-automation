@@ -50,3 +50,8 @@ resource "aws_lambda_permission" "scheduler" {
   principal     = "events.amazonaws.com"
   source_arn    = aws_cloudwatch_event_rule.reconcile.arn
 }
+resource "aws_lambda_function_event_invoke_config" "reconcile" {
+  function_name                = aws_lambda_function.service["reconcile"].function_name
+  maximum_event_age_in_seconds = 300
+  maximum_retry_attempts       = 1
+}
