@@ -44,3 +44,24 @@ resource "aws_cloudwatch_metric_alarm" "queue_age" {
   treat_missing_data  = "notBreaching"
   alarm_actions       = [aws_sns_topic.operations.arn]
 }
+resource "aws_budgets_budget" "monthly" {
+  name         = "${local.prefix}-account-monthly"
+  budget_type  = "COST"
+  limit_amount = tostring(var.monthly_budget)
+  limit_unit   = "USD"
+  time_unit    = "MONTHLY"
+  notification {
+    comparison_operator        = "GREATER_THAN"
+    threshold                  = 80
+    threshold_type             = "PERCENTAGE"
+    notification_type          = "ACTUAL"
+    subscriber_email_addresses = [var.notification_email]
+  }
+  notification {
+    comparison_operator        = "GREATER_THAN"
+    threshold                  = 100
+    threshold_type             = "PERCENTAGE"
+    notification_type          = "FORECASTED"
+    subscriber_email_addresses = [var.notification_email]
+  }
+}
