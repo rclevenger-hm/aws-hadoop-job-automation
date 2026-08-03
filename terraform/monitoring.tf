@@ -31,3 +31,16 @@ resource "aws_cloudwatch_metric_alarm" "dlq" {
   treat_missing_data  = "notBreaching"
   alarm_actions       = [aws_sns_topic.operations.arn]
 }
+resource "aws_cloudwatch_metric_alarm" "queue_age" {
+  alarm_name          = "${local.prefix}-queue-age"
+  namespace           = "AWS/SQS"
+  metric_name         = "ApproximateAgeOfOldestMessage"
+  dimensions          = { QueueName = aws_sqs_queue.jobs.name }
+  statistic           = "Maximum"
+  period              = 300
+  evaluation_periods  = 1
+  threshold           = 900
+  comparison_operator = "GreaterThanThreshold"
+  treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.operations.arn]
+}
