@@ -65,3 +65,15 @@ resource "aws_budgets_budget" "monthly" {
     subscriber_email_addresses = [var.notification_email]
   }
 }
+resource "aws_cloudwatch_log_metric_filter" "uncertain" {
+  for_each       = toset(["worker", "reconcile"])
+  name           = "${local.prefix}-${each.key}-uncertain"
+  log_group_name = aws_cloudwatch_log_group.runtime[each.key].name
+  pattern        = "{ ($.event = \"job_state\") && (($.status = \"NEEDS_REVIEW\") || ($.status = \"SUBMISSION_UNKNOWN\")) }"
+  metric_transformation {
+    name          = "UncertainSubmission"
+    namespace     = "HadoopAutomation/${local.prefix}"
+    value         = "1"
+    default_value = "0"
+  }
+}
