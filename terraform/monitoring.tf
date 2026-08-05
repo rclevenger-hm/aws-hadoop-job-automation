@@ -89,3 +89,16 @@ resource "aws_cloudwatch_metric_alarm" "uncertain" {
   treat_missing_data  = "notBreaching"
   alarm_actions       = [aws_sns_topic.operations.arn]
 }
+resource "aws_cloudwatch_metric_alarm" "api_errors" {
+  alarm_name          = "${local.prefix}-api-errors"
+  namespace           = "AWS/ApiGateway"
+  metric_name         = "5XXError"
+  dimensions          = { ApiName = aws_api_gateway_rest_api.service.name, Stage = aws_api_gateway_stage.service.stage_name }
+  statistic           = "Sum"
+  period              = 300
+  evaluation_periods  = 1
+  threshold           = 4
+  comparison_operator = "GreaterThanThreshold"
+  treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.operations.arn]
+}
