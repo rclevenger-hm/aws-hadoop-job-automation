@@ -77,3 +77,15 @@ resource "aws_cloudwatch_log_metric_filter" "uncertain" {
     default_value = "0"
   }
 }
+resource "aws_cloudwatch_metric_alarm" "uncertain" {
+  alarm_name          = "${local.prefix}-uncertain-submission"
+  namespace           = "HadoopAutomation/${local.prefix}"
+  metric_name         = "UncertainSubmission"
+  statistic           = "Sum"
+  period              = 300
+  evaluation_periods  = 1
+  threshold           = 0
+  comparison_operator = "GreaterThanThreshold"
+  treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.operations.arn]
+}
