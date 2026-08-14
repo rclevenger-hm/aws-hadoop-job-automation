@@ -42,3 +42,8 @@ run "secure_defaults" {
     error_message = "Only the worker may submit EMR steps."
   }
 }
+run "reject_negative_quota" {
+  command = plan
+  variables { daily_job_limit = -1 }
+  expect_failures = [var.daily_job_limit]
+}
