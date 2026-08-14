@@ -47,3 +47,19 @@ run "reject_negative_quota" {
   variables { daily_job_limit = -1 }
   expect_failures = [var.daily_job_limit]
 }
+run "reject_public_consumer" {
+  command = plan
+  variables {
+    cluster_profiles = {
+      analytics = {
+        cluster_id         = "j-EXAMPLE123"
+        allowed_principals = ["*"]
+        jar_prefixes       = ["s3://assets/approved/"]
+        input_prefixes     = ["s3://data/input/"]
+        output_prefixes    = ["s3://data/output/"]
+        log_uri            = "s3://logs/clusters/"
+      }
+    }
+  }
+  expect_failures = [var.cluster_profiles]
+}
