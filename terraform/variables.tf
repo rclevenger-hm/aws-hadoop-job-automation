@@ -10,3 +10,11 @@ variable "name" {
     error_message = "Use a 4–20 character lowercase service name."
   }
 }
+variable "environment" {
+  type    = string
+  default = "dev"
+  validation {
+    condition     = contains(["dev", "stage", "prod"], var.environment)
+    error_message = "Choose dev, stage or prod."
+  }
+}
