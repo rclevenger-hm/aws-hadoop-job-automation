@@ -40,3 +40,11 @@ variable "cluster_profiles" {
     error_message = "Use canonical directory URIs ending in /; JAR and log prefixes must use S3, without wildcards or traversal."
   }
 }
+variable "daily_job_limit" {
+  type    = number
+  default = 100
+  validation {
+    condition     = var.daily_job_limit >= 1 && var.daily_job_limit <= 10000 && floor(var.daily_job_limit) == var.daily_job_limit
+    error_message = "Daily accepted-job limit must be an integer from 1 to 10000."
+  }
+}
