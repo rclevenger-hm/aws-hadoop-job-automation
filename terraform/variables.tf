@@ -48,3 +48,11 @@ variable "daily_job_limit" {
     error_message = "Daily accepted-job limit must be an integer from 1 to 10000."
   }
 }
+variable "requests_per_minute" {
+  type    = number
+  default = 60
+  validation {
+    condition     = var.requests_per_minute >= 1 && var.requests_per_minute <= 10000 && floor(var.requests_per_minute) == var.requests_per_minute
+    error_message = "Request limit must be an integer from 1 to 10000."
+  }
+}
