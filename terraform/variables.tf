@@ -56,3 +56,11 @@ variable "requests_per_minute" {
     error_message = "Request limit must be an integer from 1 to 10000."
   }
 }
+variable "retention_days" {
+  type    = number
+  default = 30
+  validation {
+    condition     = var.retention_days >= 1 && var.retention_days <= 365 && floor(var.retention_days) == var.retention_days
+    error_message = "Terminal metadata retention must be 1–365 whole days."
+  }
+}
