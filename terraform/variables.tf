@@ -64,3 +64,10 @@ variable "retention_days" {
     error_message = "Terminal metadata retention must be 1–365 whole days."
   }
 }
+variable "notification_email" {
+  type = string
+  validation {
+    condition     = can(regex("^[^@ ]+@[^@ ]+\\.[^@ ]+$", var.notification_email))
+    error_message = "Provide an operator notification email."
+  }
+}
