@@ -71,3 +71,11 @@ variable "notification_email" {
     error_message = "Provide an operator notification email."
   }
 }
+variable "monthly_budget" {
+  type    = number
+  default = 100
+  validation {
+    condition     = var.monthly_budget > 0
+    error_message = "Budget must be positive."
+  }
+}
