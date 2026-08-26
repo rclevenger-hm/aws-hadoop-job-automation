@@ -79,3 +79,8 @@ variable "monthly_budget" {
     error_message = "Budget must be positive."
   }
 }
+variable "log_kms_key_arns" {
+  type        = list(string)
+  default     = []
+  description = "Existing log encryption keys; their key policies must also allow the API role."
+}
