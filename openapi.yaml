@@ -1,0 +1,527 @@
+openapi: 3.0.3
+info:
+  title: AWS Hadoop Job Automation
+  version: 1.0.0
+  description: IAM-signed asynchronous Hadoop JAR submission to allowlisted traditional
+    EMR clusters. Metadata status is eventually reconciled; unknown submission never
+    triggers automatic resubmission.
+servers:
+- url: https://{apiId}.execute-api.{region}.amazonaws.com/v1
+  variables:
+    apiId:
+      default: YOUR_API_ID
+    region:
+      default: us-east-1
+security:
+- sigv4: []
+paths:
+  /jobs:
+    post:
+      operationId: submitJob
+      responses:
+        '202':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+        '400':
+          description: Request rejected; API Gateway errors can use a platform body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Request rejected; API Gateway errors can use a platform body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Request rejected; API Gateway errors can use a platform body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Request rejected; API Gateway errors can use a platform body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Request rejected; API Gateway errors can use a platform body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Request rejected; API Gateway errors can use a platform body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Request rejected; API Gateway errors can use a platform body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '200':
+          description: Idempotent replay
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          minLength: 8
+          maxLength: 128
+          pattern: ^[A-Za-z0-9._:-]+$
+      requestBody:
+        required: true
+        description: 64 KiB maximum; cluster profile is configured by the operator
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JobRequest'
+    get:
+      operationId: listJobs
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  jobs:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Job'
+                  next_cursor:
+                    type: string
+                    nullable: true
+        '400':
+          description: Request rejected; API Gateway errors can use a platform body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Request rejected; API Gateway errors can use a platform body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Request rejected; API Gateway errors can use a platform body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Request rejected; API Gateway errors can use a platform body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Request rejected; API Gateway errors can use a platform body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Request rejected; API Gateway errors can use a platform body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Request rejected; API Gateway errors can use a platform body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      parameters:
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      - name: cursor
+        in: query
+        schema:
+          type: string
+          maxLength: 2048
+      - name: status
+        in: query
+        schema: &id002
+          type: string
+          enum:
+          - QUEUED
+          - SUBMITTING
+          - SUBMISSION_UNKNOWN
+          - SUBMITTED
+          - RUNNING
+          - CANCEL_REQUESTED
+          - SUCCEEDED
+          - FAILED
+          - CANCELLED
+          - NEEDS_REVIEW
+  /jobs/{job_id}:
+    get:
+      operationId: getJob
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+        '400':
+          description: Request rejected; API Gateway errors can use a platform body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Request rejected; API Gateway errors can use a platform body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Request rejected; API Gateway errors can use a platform body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Request rejected; API Gateway errors can use a platform body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Request rejected; API Gateway errors can use a platform body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Request rejected; API Gateway errors can use a platform body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Request rejected; API Gateway errors can use a platform body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    parameters:
+    - name: job_id
+      in: path
+      required: true
+      schema: &id001
+        type: string
+        pattern: ^[a-f0-9]{64}$
+  /jobs/{job_id}/cancel:
+    post:
+      operationId: cancelJob
+      responses:
+        '202':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+        '400':
+          description: Request rejected; API Gateway errors can use a platform body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Request rejected; API Gateway errors can use a platform body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Request rejected; API Gateway errors can use a platform body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Request rejected; API Gateway errors can use a platform body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Request rejected; API Gateway errors can use a platform body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Request rejected; API Gateway errors can use a platform body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Request rejected; API Gateway errors can use a platform body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '200':
+          description: Cancelled before dispatch, or already cancelled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+    parameters:
+    - name: job_id
+      in: path
+      required: true
+      schema: *id001
+  /jobs/{job_id}/logs:
+    get:
+      operationId: getJobLog
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  stream:
+                    type: string
+                  text:
+                    type: string
+                  truncated:
+                    type: boolean
+                  limit_bytes:
+                    type: integer
+                  note:
+                    type: string
+        '400':
+          description: Request rejected; API Gateway errors can use a platform body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Request rejected; API Gateway errors can use a platform body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Request rejected; API Gateway errors can use a platform body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Request rejected; API Gateway errors can use a platform body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Request rejected; API Gateway errors can use a platform body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Request rejected; API Gateway errors can use a platform body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Request rejected; API Gateway errors can use a platform body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      parameters:
+      - name: stream
+        in: query
+        schema:
+          type: string
+          enum:
+          - stdout
+          - stderr
+          - controller
+          default: stdout
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 65536
+          default: 16384
+    parameters:
+    - name: job_id
+      in: path
+      required: true
+      schema: *id001
+  /usage:
+    get:
+      operationId: getUsage
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  date:
+                    type: string
+                    format: date
+                  jobs:
+                    type: integer
+                  limit:
+                    type: integer
+        '400':
+          description: Request rejected; API Gateway errors can use a platform body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Request rejected; API Gateway errors can use a platform body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Request rejected; API Gateway errors can use a platform body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Request rejected; API Gateway errors can use a platform body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Request rejected; API Gateway errors can use a platform body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Request rejected; API Gateway errors can use a platform body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Request rejected; API Gateway errors can use a platform body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+components:
+  securitySchemes:
+    sigv4:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: AWS Signature Version 4 for execute-api; sign using the standard
+        AWS SDK credential chain. This is not a static API key.
+      x-amazon-apigateway-authtype: awsSigv4
+  schemas:
+    Error:
+      type: object
+      required:
+      - code
+      - error
+      - request_id
+      properties:
+        code:
+          type: string
+        error:
+          type: string
+        request_id:
+          type: string
+    Job:
+      type: object
+      required:
+      - job_id
+      - status
+      - profile
+      - created_at
+      - updated_at
+      properties:
+        job_id: *id001
+        profile:
+          type: string
+        status: *id002
+        step_id:
+          type: string
+        created_at:
+          type: integer
+          description: Unix seconds
+        updated_at:
+          type: integer
+        expires_at:
+          type: integer
+        cancel_requested:
+          type: boolean
+        cancel_accepted:
+          type: boolean
+        reason:
+          type: string
+    JobRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - profile
+      - jar_path
+      - job_class
+      - input_path
+      - output_path
+      properties:
+        profile:
+          type: string
+          maxLength: 40
+        jar_path:
+          type: string
+          maxLength: 4096
+        job_class:
+          type: string
+          maxLength: 4096
+        input_path:
+          type: string
+          maxLength: 4096
+        output_path:
+          type: string
+          maxLength: 4096
+        arguments:
+          type: array
+          maxItems: 20
+          items:
+            type: string
+            maxLength: 1024
