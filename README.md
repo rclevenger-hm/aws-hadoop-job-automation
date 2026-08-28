@@ -16,3 +16,21 @@ Submit validated Hadoop JAR jobs to existing Amazon EMR clusters through an IAM-
 
 This implements the [OCI project's](https://github.com/rclevenger-hm/oci-hadoop-job-automation) proposed asynchronous control plane. See [parity and compatibility](docs/PARITY.md) for the different execution and output contracts.
 
+## Local verification
+
+```sh
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install --require-hashes -r requirements-dev.txt
+ruff check app tests scripts
+python -m pytest
+python scripts/check_contract.py
+pip-audit -r requirements.txt --disable-pip
+python scripts/build.py
+terraform -chdir=terraform init -backend=false -lockfile=readonly
+terraform -chdir=terraform validate
+terraform -chdir=terraform test
+```
+
+Use Python 3.12+ locally; Lambda/CI use Python 3.13. Tests use Moto and botocore stubs without AWS credentials, live EMR execution or cloud provisioning. The artifact vendors a hash-locked boto3 stack instead of depending on the runtime's bundled SDK.
+
