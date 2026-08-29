@@ -34,3 +34,20 @@ terraform -chdir=terraform test
 
 Use Python 3.12+ locally; Lambda/CI use Python 3.13. Tests use Moto and botocore stubs without AWS credentials, live EMR execution or cloud provisioning. The artifact vendors a hash-locked boto3 stack instead of depending on the runtime's bundled SDK.
 
+## Deploy and call
+
+Follow [deployment](docs/DEPLOYMENT.md). Configure an existing traditional EMR-on-EC2 cluster with Hadoop, S3 log archival, approved JARs and narrowly scoped instance-profile permissions. Per-step Spark/Hive runtime-role clusters are outside this Hadoop JAR implementation.
+
+```sh
+export API_ENDPOINT='https://API_ID.execute-api.us-east-1.amazonaws.com/v1'
+export AWS_REGION='us-east-1'
+export AWS_PROFILE='hadoop-consumer'
+python scripts/client.py submit examples/job.json --key wordcount-run-001
+python scripts/client.py list
+python scripts/client.py status JOB_ID
+python scripts/client.py logs JOB_ID --stream stdout
+python scripts/client.py cancel JOB_ID
+```
+
+Replace example bucket/cluster names and use a fresh output directory for each intended run. A JAR executes with the cluster's workload privileges: only trusted, reviewed artifacts belong under approved prefixes.
+
