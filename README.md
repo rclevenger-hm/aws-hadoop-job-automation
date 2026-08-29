@@ -51,3 +51,8 @@ python scripts/client.py cancel JOB_ID
 
 Replace example bucket/cluster names and use a fresh output directory for each intended run. A JAR executes with the cluster's workload privileges: only trusted, reviewed artifacts belong under approved prefixes.
 
+## Documentation
+
+[API](docs/API.md) · [OpenAPI](openapi.yaml) · [architecture](docs/ARCHITECTURE.md) · [parity](docs/PARITY.md) · [deployment](docs/DEPLOYMENT.md) · [security](docs/SECURITY.md) · [operations](docs/OPERATIONS.md) · [costs](docs/COSTS.md) · [validation](docs/VALIDATION.md)
+
+No live cluster test is implied by passing unit tests or Terraform mocked plans. Deployment and billable EMR smoke tests are manual.
