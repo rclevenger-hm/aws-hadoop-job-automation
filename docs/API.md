@@ -19,3 +19,11 @@ Use [examples/job.json](../examples/job.json). Required fields are `profile`, `j
 
 Profile configuration selects the cluster, approved S3 JAR prefixes, S3/HDFS input/output prefixes and allowed IAM callers. Percent escapes, dot-segment traversal, query strings and fragments are rejected in paths. These are input restrictions, not an execution sandbox: trusted JAR code can access whatever the cluster instance profile permits.
 
+## Idempotency and status
+
+Supply `Idempotency-Key` with 8–128 letters, digits, dots, underscores, colons or hyphens. Same caller/key/normalized payload returns the existing job; changed inputs return 409. The key is honored while metadata remains retained. An expired record pending TTL removal returns `EXPIRED_KEY`; use a fresh key only for a genuinely intended new execution.
+
+Statuses: `QUEUED`, `SUBMITTING`, `SUBMISSION_UNKNOWN`, `SUBMITTED`, `RUNNING`, `CANCEL_REQUESTED`, `SUCCEEDED`, `FAILED`, `CANCELLED`, `NEEDS_REVIEW`. `NEEDS_REVIEW` is a control-plane stop, not proof that remote work stopped. Do not change keys just because a submit call or status poll timed out.
+
+Cancellation returns 200 for work cancelled before dispatch or already cancelled, and 202 when intent is pending. Remote cancellation acknowledgment is not completion. Completed jobs return 409 if a new cancellation is requested. A repeated cancellation request is safe.
+
