@@ -27,3 +27,10 @@ Statuses: `QUEUED`, `SUBMITTING`, `SUBMISSION_UNKNOWN`, `SUBMITTED`, `RUNNING`, 
 
 Cancellation returns 200 for work cancelled before dispatch or already cancelled, and 202 when intent is pending. Remote cancellation acknowledgment is not completion. Completed jobs return 409 if a new cancellation is requested. A repeated cancellation request is safe.
 
+## Pagination, logs and errors
+
+History page limits are 1–100; cursor tokens bind the caller and status filter. Tokens are not authentication credentials. GSI consistency and filtering can yield empty pages with a next cursor; continue until it is null. Results are ordered newest first within the history index.
+
+Logs allow `stdout`, `stderr` or `controller`. The response defaults to the first 16 KiB, with a maximum requested size of 64 KiB. Compressed reads and decompression are capped near 1 MiB to bound resource use; truncation is explicit. Invalid UTF-8 is replaced during display. `LOG_NOT_READY` means S3 archival is not available yet. No raw log data is copied into application logs.
+
+Application errors contain `code`, `error`, and `request_id`; platform IAM errors may use a different envelope. 429 returns `Retry-After`. Daily admissions reset at 00:00 UTC; request windows reset each UTC minute. Poll with backoff and inspect `/usage` before retrying a daily allowance error.
