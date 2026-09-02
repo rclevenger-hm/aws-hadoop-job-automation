@@ -8,3 +8,11 @@ The worker conditionally replaces `QUEUED` with `SUBMITTING` using a version num
 
 A crash before the API call can leave a job that never ran. A timeout after acceptance can leave a job already running. Both states remain ambiguous; the service prioritizes avoiding duplicate execution over automatic resubmission. A duplicate SQS delivery cannot move a non-queued job back into submission.
 
+## Reconciliation
+
+EventBridge invokes the reconciler every minute. A 16-shard DynamoDB GSI orders nonterminal jobs by next-check time. Conditional updates move each claimed job's due time forward, preventing stale index reads or concurrent invocations from processing the same version. Shard start order rotates each minute; each query reads at most 25 jobs and the loop stops before Lambda's deadline.
+
+Queued jobs are republished, but never directly submitted by the reconciler. A queued admission older than one day fails before execution. Unlinked submissions older than two minutes are searched through paginated `ListSteps` using an exact correlation name. Pagination markers and candidate IDs persist across runs. One match is attached only after completing the scan; multiple matches require review. No match after one day becomes `NEEDS_REVIEW`, which ends automatic tracking without asserting the remote job failed.
+
+Known steps are described and mapped to submitted/running/succeeded/failed/cancelled. Cancellation remains requested until a later describe confirms a terminal state; success can win the race. `CancelSteps` uses `SEND_INTERRUPT`, so Hadoop/JAR shutdown behavior must be verified for your application.
+
