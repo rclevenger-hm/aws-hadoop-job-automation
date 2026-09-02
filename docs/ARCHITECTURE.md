@@ -16,3 +16,8 @@ Queued jobs are republished, but never directly submitted by the reconciler. A q
 
 Known steps are described and mapped to submitted/running/succeeded/failed/cancelled. Cancellation remains requested until a later describe confirms a terminal state; success can win the race. `CancelSteps` uses `SEND_INTERRUPT`, so Hadoop/JAR shutdown behavior must be verified for your application.
 
+## Retention and indexes
+
+Active records have no TTL and remain recoverable. Terminal/control-plane-review records receive retention TTL (30 days by default); application reads deny them after that timestamp even before DynamoDB removes them. The history GSI is eventually consistent; returned rows are re-read from the base table so stale index state cannot regress a response. Status filtering may produce an empty page with a continuation cursor.
+
+DynamoDB metadata and EMR steps/logs have independent retention. Restore metadata with PITR cautiously: a restored queued record could precede an already-submitted step. Pause submission and reconcile restored jobs against EMR before resuming.
