@@ -14,3 +14,20 @@ Create a private, encrypted, versioned S3 bucket for Terraform state separately.
 
 Create GitHub OIDC trust for the exact repository and protected environment subject, with audience `sts.amazonaws.com`. The deployment role needs scoped management permissions for IAM runtime roles/policies, Lambda, API Gateway, DynamoDB, SQS, EventBridge, CloudWatch Logs/alarms, SNS and Budgets, plus `iam:PassRole` for the Lambda runtime roles and state-bucket access. These are provisioning permissions; consumer callers only need API invocation. Restrict OIDC trust so arbitrary forks and untrusted repositories cannot assume it.
 
+## Manual apply
+
+```sh
+python -m pip install --require-hashes -r requirements-dev.txt
+python -m pytest
+python scripts/build.py
+cp terraform/terraform.tfvars.example terraform/terraform.tfvars
+cp terraform/backend.hcl.example terraform/backend.hcl
+# Edit account, region, cluster, prefixes, consumers, state and email.
+terraform -chdir=terraform init -backend-config=backend.hcl -lockfile=readonly
+terraform -chdir=terraform plan -out=deploy.tfplan
+terraform -chdir=terraform apply deploy.tfplan
+terraform -chdir=terraform output
+```
+
+Lambda needs outbound access to AWS service APIs, not an SSH route into the cluster. Functions use the standard Lambda network configuration; the cluster can remain private. Provisioning IAM propagation may require retrying a failed first deployment after inspecting the error.
+
