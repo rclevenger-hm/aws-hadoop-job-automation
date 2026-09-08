@@ -31,3 +31,20 @@ terraform -chdir=terraform output
 
 Lambda needs outbound access to AWS service APIs, not an SSH route into the cluster. Functions use the standard Lambda network configuration; the cluster can remain private. Provisioning IAM propagation may require retrying a failed first deployment after inspecting the error.
 
+## GitHub deployment variables
+
+Create a protected `dev`, `stage` or `prod` GitHub environment with:
+
+| Variable | Purpose |
+|---|---|
+| `AWS_REGION` | Cluster/control-plane region |
+| `AWS_DEPLOY_ROLE_ARN` | OIDC deployment role |
+| `TF_STATE_BUCKET` | Pre-created state bucket |
+| `CLUSTER_PROFILES` | JSON matching [profiles example](../examples/profiles.json) |
+| `NOTIFICATION_EMAIL` | Operator email |
+| `SERVICE_NAME` | Optional, default `hadoop` |
+| `MONTHLY_BUDGET` | Optional account-wide USD budget, default 100 |
+| `LOG_KMS_KEY_ARNS` | Optional JSON array, default `[]` |
+
+Dispatch `Deploy AWS`. It verifies the source/artifact, assumes the deploy role, plans/applies Terraform, and checks unsigned requests fail. It never submits a billable Hadoop job automatically. Confirm the SNS email subscription after deployment. Grant consumers `execute-api:Invoke` on the `invoke_resource` output; both IAM identity and resource policies must permit cross-account access.
+
