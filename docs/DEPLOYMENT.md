@@ -48,3 +48,8 @@ Create a protected `dev`, `stage` or `prod` GitHub environment with:
 
 Dispatch `Deploy AWS`. It verifies the source/artifact, assumes the deploy role, plans/applies Terraform, and checks unsigned requests fail. It never submits a billable Hadoop job automatically. Confirm the SNS email subscription after deployment. Grant consumers `execute-api:Invoke` on the `invoke_resource` output; both IAM identity and resource policies must permit cross-account access.
 
+## Live acceptance and removal
+
+Run the opt-in smoke test with an approved tiny JAR and unique output path. See [validation](VALIDATION.md). Verify a second caller cannot inspect the first caller's job. Monitor cost and uncertainty alarms during a pilot.
+
+DynamoDB deletion protection is enabled. Decommission by stopping intake, resolving active/unknown jobs, retaining required history, and then explicitly reviewing deletion-protection removal. Destroying this control plane does not cancel EMR jobs or remove their outputs/logs.
