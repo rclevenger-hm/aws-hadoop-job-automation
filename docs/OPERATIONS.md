@@ -18,3 +18,8 @@ Queued cancellation is local and terminal. Once submission starts, cancellation 
 
 S3 log archiving can lag and can be disabled on the existing cluster. `LOG_NOT_READY` does not mean failure. Bounded log responses show the beginning of a selected archive; operators needing full logs use separately authorized S3/EMR tooling. Missing KMS access produces a service error rather than silently bypassing encryption.
 
+## Alarms and retention
+
+Confirm SNS subscription delivery. Alarms cover Lambda errors, API 5xx, queue age, DLQ depth and transitions into unknown/review states. These are operational signals, not a replacement for workload completion SLAs. Logs default to 30-day retention; terminal metadata defaults to 30 days, with TTL deletion asynchronous and immediate API expiry checks. EMR logs and job outputs are managed outside this stack.
+
+DynamoDB PITR can recover metadata, but restored records may predate remote submission. Disable the SQS mapping and API intake before restoration, reconcile restored state against EMR, and re-enable only after reviewed repairs. Verify backup retention requirements independently of API TTL.
