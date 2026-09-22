@@ -18,3 +18,6 @@ Queues are encrypted with SQS-managed encryption; DynamoDB encryption, PITR and 
 
 A runtime identity can read the whole application table; tenant isolation is an application boundary, not per-tenant DynamoDB IAM enforcement. A compromised administrator can also alter job metadata or add misleading EMR step names. Review CloudTrail and guard operational access. Metadata restoration must not blindly replay historical queued records.
 
+## Dependency maintenance
+
+Production and development requirements are pinned with artifact hashes. CI audits the production dependency lock, checks code and configuration, runs behavior tests and validates infrastructure. Regenerate locks with `pip-compile --generate-hashes --allow-unsafe --strip-extras requirements.in` and the corresponding development input after reviewing updates. Here `--allow-unsafe` is pip-tools terminology for pinning installer/build packages, not disabling hash verification.
