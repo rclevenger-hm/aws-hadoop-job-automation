@@ -12,3 +12,9 @@ Only the worker Lambda can call `AddJobFlowSteps`; its IAM policy restricts clus
 
 JAR arguments are passed as an API array, not interpolated into a shell command. Nevertheless, a Hadoop JAR is executable code and inherits the existing cluster's privileges. Approved prefixes are not a code sandbox, and a JAR may ignore its nominal input/output arguments. Protect artifact publishing, restrict the cluster instance profile, and isolate mutually untrusted workloads using separate infrastructure.
 
+## Data and recovery
+
+Queues are encrypted with SQS-managed encryption; DynamoDB encryption, PITR and deletion protection are enabled. Metadata contains job paths/configuration, never AWS credentials or SSH private keys. Application logs record safe status/error categories and IDs; requested archived logs are returned only to their owner and may themselves contain sensitive application output.
+
+A runtime identity can read the whole application table; tenant isolation is an application boundary, not per-tenant DynamoDB IAM enforcement. A compromised administrator can also alter job metadata or add misleading EMR step names. Review CloudTrail and guard operational access. Metadata restoration must not blindly replay historical queued records.
+
