@@ -6,3 +6,15 @@ Tests cover the OCI-compatible fields, profile authorization, malformed bodies, 
 
 Moto exercises DynamoDB transactions, conditional writes, indexes and SQS operations in process. Botocore Stubber checks native EMR request shapes. These tools are useful contracts, not proof of live AWS IAM or EMR behavior. CI also verifies a production-only vendored artifact imports and runs three mocked Terraform plans for secure defaults and invalid configuration rejection.
 
+## Live smoke test
+
+After a reviewed deployment, choose a small trusted JAR, supported traditional EMR cluster and fresh output prefix. Run with an authorized consumer:
+
+```sh
+export RUN_BILLABLE_EMR_SMOKE=yes
+export SMOKE_JOB_FILE=/absolute/path/to/approved-small-job.json
+python scripts/smoke.py
+```
+
+The test submits once, repeats the same idempotency key and polls up to 15 minutes for success. It uses real cloud resources and executes your JAR; it does not launch a cluster. If it times out, inspect the original job rather than retrying under a new key.
+
