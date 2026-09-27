@@ -18,3 +18,8 @@ python scripts/smoke.py
 
 The test submits once, repeats the same idempotency key and polls up to 15 minutes for success. It uses real cloud resources and executes your JAR; it does not launch a cluster. If it times out, inspect the original job rather than retrying under a new key.
 
+## Production acceptance
+
+Verify unsigned/disallowed callers fail and another allowed caller cannot read or cancel the job. Check the actual EMR arguments, input/output permissions and archived logs. Test cancellation with a harmless long-running job and verify its YARN outcome. Simulate a publish outage and confirm recovery. Exercise a lost submission response in a disposable environment and verify no second step is submitted. Verify DLQ alarms, uncertainty notifications, KMS access, TTL behavior and a controlled PITR restore.
+
+Check these against your actual EMR release and application. Passing tests alone does not establish production readiness, exactly-once execution or full workload isolation.
