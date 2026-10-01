@@ -1,0 +1,66 @@
+name: Deploy AWS
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        type: choice
+        options: [dev, stage, prod]
+        default: dev
+        required: true
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: deploy-${{ inputs.environment }}
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: ${{ inputs.environment }}
+    env:
+      TF_IN_AUTOMATION: 'true'
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      TF_VAR_region: ${{ vars.AWS_REGION }}
+      TF_VAR_environment: ${{ inputs.environment }}
+      TF_VAR_name: ${{ vars.SERVICE_NAME || 'hadoop' }}
+      TF_VAR_cluster_profiles: ${{ vars.CLUSTER_PROFILES }}
+      TF_VAR_notification_email: ${{ vars.NOTIFICATION_EMAIL }}
+      TF_VAR_monthly_budget: ${{ vars.MONTHLY_BUDGET || '100' }}
+      TF_VAR_log_kms_key_arns: ${{ vars.LOG_KMS_KEY_ARNS || '[]' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+      - run: python -m pip install --require-hashes -r requirements-dev.txt
+      - run: ruff check app tests scripts && python -m pytest && python scripts/check_contract.py
+      - run: pip-audit -r requirements.txt --disable-pip
+      - run: python scripts/build.py
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          role-session-name: hadoop-deployment
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.13.5
+      - name: Initialize remote state
+        env:
+          STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+          DEPLOY_ENV: ${{ inputs.environment }}
+        run: >-
+          terraform -chdir=terraform init -input=false -lockfile=readonly
+          -backend-config="bucket=$STATE_BUCKET"
+          -backend-config="key=hadoop/$DEPLOY_ENV/terraform.tfstate"
+          -backend-config="region=$AWS_REGION"
+          -backend-config="encrypt=true"
+      - run: terraform -chdir=terraform validate
+      - run: terraform -chdir=terraform plan -input=false -out=deploy.tfplan
+      - run: terraform -chdir=terraform apply -input=false deploy.tfplan
+      - name: Verify unsigned requests are rejected
+        run: |
+          endpoint=$(terraform -chdir=terraform output -raw endpoint)
+          status=$(curl --retry 3 --retry-all-errors -s -o /dev/null -w '%{http_code}' "$endpoint/jobs")
+          case "$status" in 401|403) ;; *) exit 1 ;; esac
