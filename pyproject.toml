@@ -1,0 +1,16 @@
+[project]
+name = "aws-hadoop-job-automation"
+version = "1.0.0"
+description = "Durable Amazon EMR Hadoop job automation"
+requires-python = ">=3.12"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 160
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]

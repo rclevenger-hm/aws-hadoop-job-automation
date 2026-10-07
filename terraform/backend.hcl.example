@@ -1,0 +1,5 @@
+bucket = "your-private-versioned-terraform-state"
+key = "hadoop/dev/terraform.tfstate"
+region = "us-east-1"
+encrypt = true
+# Native S3 locking is enabled in main.tf. The deploy role needs state and .tflock object permissions.

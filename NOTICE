@@ -1,0 +1,11 @@
+AWS Hadoop Job Automation
+Copyright (c) 2026 Roger Clevenger
+
+Based on the behavioral contract and asynchronous-control-plane design of
+Roger Clevenger's MIT-licensed oci-hadoop-job-automation repository at
+ af9ac91b845aa1b8b709d1fdf74b58dc3cdeadde.
+The original MIT license is retained in LICENSE. AWS adapters, state storage,
+queue recovery, API, Terraform and tests are implemented for this repository.
+
+The April–September 2026 commit timeline was reconstructed during the October
+2026 implementation. Assigned dates do not establish when the work occurred.
