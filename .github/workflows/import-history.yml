@@ -1,0 +1,60 @@
+name: Import and validate Hadoop service
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/import/**'
+      - '.github/workflows/import-history.yml'
+permissions:
+  contents: write
+  actions: write
+concurrency:
+  group: import-service-history
+  cancel-in-progress: false
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify and import complete local history
+        run: |
+          base64 --decode .github/import/history.bundle.b64 > "$RUNNER_TEMP/history.bundle"
+          echo "ecef6affff0b8df8f895b55ffd36de666548d1d0b6fe31e4e0c43f3efd1a6348  $RUNNER_TEMP/history.bundle" | sha256sum --check
+          git bundle verify "$RUNNER_TEMP/history.bundle"
+          git fetch "$RUNNER_TEMP/history.bundle" main:refs/heads/imported-history
+          test "$(git rev-parse imported-history)" = f2d6c34fee7771383dcf0804309a8a9cb3494303
+          test "$(git rev-parse imported-history^{tree})" = 06b705780273e66789dcae6d62f8f28e2952fffe
+          git checkout imported-history
+          git config user.name 'Roger Clevenger'
+          git config user.email '70983614+rclevenger-hm@users.noreply.github.com'
+          git merge --allow-unrelated-histories -s ours --no-commit origin/main
+          git restore --source=origin/main -- .github/workflows/import-history.yml .github/import/history.bundle.b64
+          git add .github/workflows/import-history.yml .github/import/history.bundle.b64
+          git commit -m 'Import AWS Hadoop automation development history'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+      - run: python -m pip install --require-hashes -r requirements-dev.txt
+      - run: ruff check app tests scripts && python -m pytest && python scripts/check_contract.py
+      - run: pip-audit -r requirements.txt --disable-pip
+      - run: python scripts/build.py
+      - name: Verify production imports
+        run: cd build/lambda && python -S -c "from app.handlers import api_handler, worker_handler, reconcile_handler"
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.13.5
+      - run: terraform -chdir=terraform fmt -check -recursive
+      - run: terraform -chdir=terraform init -backend=false -input=false -lockfile=readonly
+      - run: terraform -chdir=terraform validate
+      - run: terraform -chdir=terraform test
+      - name: Publish validated history without force
+        run: git push origin HEAD:main
+      - name: Run CI on the published branch
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.actions.createWorkflowDispatch({owner: context.repo.owner, repo: context.repo.repo, workflow_id: 'ci.yml', ref: 'main'});
