@@ -38,7 +38,7 @@ run "secure_defaults" {
     error_message = "Encrypt queues and retain dead letters for investigation."
   }
   assert {
-    condition     = !strcontains(aws_iam_role_policy.runtime["reconcile"].policy, "AddJobFlowSteps") && !strcontains(aws_iam_role_policy.runtime["api"].policy, "AddJobFlowSteps")
+    condition     = alltrue([for statement in concat(local.runtime_statements["api"], local.runtime_statements["reconcile"]) : !contains(statement.Action, "elasticmapreduce:AddJobFlowSteps")])
     error_message = "Only the worker may submit EMR steps."
   }
 }
