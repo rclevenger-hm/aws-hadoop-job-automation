@@ -38,7 +38,7 @@ jobs:
       - run: ruff check app tests scripts && python -m pytest && python scripts/check_contract.py
       - run: pip-audit -r requirements.txt --disable-pip
       - run: python scripts/build.py
-      - uses: aws-actions/configure-aws-credentials@v4
+      - uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
