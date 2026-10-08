@@ -27,7 +27,7 @@ jobs:
       - run: python scripts/build.py
       - name: Verify production artifact imports
         run: cd build/lambda && python -S -c "from app.handlers import api_handler, worker_handler, reconcile_handler"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: lambda-package
           path: artifacts/lambda.zip
