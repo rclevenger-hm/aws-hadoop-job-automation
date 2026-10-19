@@ -42,7 +42,7 @@ jobs:
         with:
           name: lambda-package
           path: artifacts
-      - uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: 1.13.5
       - run: terraform -chdir=terraform fmt -check -recursive
