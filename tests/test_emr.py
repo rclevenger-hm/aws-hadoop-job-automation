@@ -96,3 +96,90 @@ def test_malformed_step_response_is_ambiguous(env, payload):
     client.add_job_flow_steps.return_value = {'StepIds': []}
     with pytest.raises(RuntimeError, match='ambiguous'):
         Emr(client, None).submit(job)
+
+
+def log_request(job, suffix=''):
+    return {'Bucket': 'your-emr-logs', 'Key': f"clusters/j-EXAMPLE123/steps/{job['step_id']}/stdout{suffix}", 'Range': f'bytes=0-{MAX_LOG}'}
+
+
+def missing_lookup(request):
+    return {'Bucket': request['Bucket'], 'Prefix': request['Key'], 'MaxKeys': 1}
+
+
+@pytest.mark.parametrize('error_code', ['AccessDenied', '403'])
+def test_missing_gzip_with_restricted_listing_falls_back_to_plaintext(env, payload, error_code):
+    job = create(env, payload)
+    job['step_id'] = 's-STEP'
+    s3 = boto3.client('s3', region_name='us-east-1')
+    compressed, plain = log_request(job, '.gz'), log_request(job)
+    with Stubber(s3) as stub:
+        stub.add_client_error('get_object', service_error_code=error_code, http_status_code=403, expected_params=compressed)
+        stub.add_response('list_objects_v2', {'KeyCount': 0, 'IsTruncated': False}, missing_lookup(compressed))
+        stub.add_response('get_object', {'Body': StreamingBody(io.BytesIO(b'plain log'), 9)}, plain)
+        result = Emr(None, s3).logs(job, 'stdout', 1024)
+        assert result['text'] == 'plain log' and not result['truncated']
+        stub.assert_no_pending_responses()
+
+
+def test_both_log_formats_absent_with_restricted_listing_are_not_ready(env, payload):
+    job = create(env, payload)
+    job['step_id'] = 's-STEP'
+    s3 = boto3.client('s3', region_name='us-east-1')
+    with Stubber(s3) as stub:
+        for suffix in ['.gz', '']:
+            request = log_request(job, suffix)
+            stub.add_client_error('get_object', service_error_code='AccessDenied', http_status_code=403, expected_params=request)
+            # Prefix matches are not exact object matches.
+            stub.add_response('list_objects_v2', {'KeyCount': 1, 'Contents': [{'Key': request['Key'] + '.old'}]}, missing_lookup(request))
+        with pytest.raises(ApiError) as error:
+            Emr(None, s3).logs(job, 'stdout', 1024)
+        assert error.value.code == 'LOG_NOT_READY'
+        stub.assert_no_pending_responses()
+
+
+@pytest.mark.parametrize('suffix', ['.gz', ''])
+def test_existing_inaccessible_log_preserves_permission_error(env, payload, suffix):
+    from botocore.exceptions import ClientError
+    job = create(env, payload)
+    job['step_id'] = 's-STEP'
+    s3 = boto3.client('s3', region_name='us-east-1')
+    request = log_request(job, suffix)
+    with Stubber(s3) as stub:
+        if not suffix:
+            stub.add_client_error('get_object', service_error_code='NoSuchKey', expected_params=log_request(job, '.gz'))
+        stub.add_client_error('get_object', service_error_code='AccessDenied', http_status_code=403, expected_params=request)
+        stub.add_response('list_objects_v2', {'KeyCount': 1, 'Contents': [{'Key': request['Key']}]}, missing_lookup(request))
+        with pytest.raises(ClientError) as error:
+            Emr(None, s3).logs(job, 'stdout', 1024)
+        assert error.value.response['Error']['Code'] == 'AccessDenied'
+        assert error.value.operation_name == 'GetObject'
+        stub.assert_no_pending_responses()
+
+
+@pytest.mark.parametrize('error_code', ['AccessDenied', 'NoSuchBucket', 'SlowDown'])
+def test_failed_absence_lookup_remains_a_service_error(env, payload, error_code):
+    from botocore.exceptions import ClientError
+    job = create(env, payload)
+    job['step_id'] = 's-STEP'
+    s3 = boto3.client('s3', region_name='us-east-1')
+    request = log_request(job, '.gz')
+    with Stubber(s3) as stub:
+        stub.add_client_error('get_object', service_error_code='AccessDenied', http_status_code=403, expected_params=request)
+        stub.add_client_error('list_objects_v2', service_error_code=error_code, expected_params=missing_lookup(request))
+        with pytest.raises(ClientError) as error:
+            Emr(None, s3).logs(job, 'stdout', 1024)
+        assert error.value.operation_name == 'ListObjectsV2'
+        stub.assert_no_pending_responses()
+
+
+def test_missing_log_lookup_does_not_mask_unrelated_get_failures(env, payload):
+    from botocore.exceptions import ClientError
+    job = create(env, payload)
+    job['step_id'] = 's-STEP'
+    s3 = boto3.client('s3', region_name='us-east-1')
+    with Stubber(s3) as stub:
+        stub.add_client_error('get_object', service_error_code='SlowDown', expected_params=log_request(job, '.gz'))
+        with pytest.raises(ClientError) as error:
+            Emr(None, s3).logs(job, 'stdout', 1024)
+        assert error.value.response['Error']['Code'] == 'SlowDown'
+        stub.assert_no_pending_responses()

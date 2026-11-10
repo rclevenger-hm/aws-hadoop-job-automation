@@ -16,7 +16,11 @@ locals {
   tags         = { Service = "hadoop-job-automation", Environment = var.environment, ManagedBy = "terraform" }
   consumers    = sort(distinct(flatten([for p in values(var.cluster_profiles) : p.allowed_principals])))
   cluster_arns = distinct([for p in values(var.cluster_profiles) : "arn:${data.aws_partition.current.partition}:elasticmapreduce:${var.region}:${data.aws_caller_identity.current.account_id}:cluster/${p.cluster_id}"])
-  log_arns     = distinct([for p in values(var.cluster_profiles) : "arn:${data.aws_partition.current.partition}:s3:::${trimprefix(p.log_uri, "s3://")}${p.cluster_id}/steps/*"])
+  log_locations = distinct([for p in values(var.cluster_profiles) : {
+    bucket = regex("^s3://([^/]+)/", p.log_uri)[0]
+    prefix = "${regex("^s3://[^/]+/(.*)$", p.log_uri)[0]}${p.cluster_id}/steps/"
+  }])
+  log_arns = [for location in local.log_locations : "arn:${data.aws_partition.current.partition}:s3:::${location.bucket}/${location.prefix}*"]
   env = {
     CLUSTER_PROFILES    = jsonencode(var.cluster_profiles)
     JOBS_TABLE          = aws_dynamodb_table.jobs.name
