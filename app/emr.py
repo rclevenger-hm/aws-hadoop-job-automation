@@ -60,7 +60,16 @@ class Emr:
                 response = self.s3.get_object(Bucket=uri.netloc, Key=key + suffix, Range=f'bytes=0-{MAX_LOG}')
                 break
             except ClientError as exc:
-                if exc.response['Error']['Code'] not in {'NoSuchKey', '404'}:
+                code = exc.response['Error']['Code']
+                if code in {'NoSuchKey', '404'}:
+                    continue
+                if code not in {'AccessDenied', '403'}:
+                    raise
+                # Missing objects can return 403 without unconditional ListBucket.
+                # An explicit prefix-scoped lookup distinguishes absence from a
+                # genuine GetObject/KMS denial without granting whole-bucket listing.
+                page = self.s3.list_objects_v2(Bucket=uri.netloc, Prefix=key + suffix, MaxKeys=1)
+                if any(item['Key'] == key + suffix for item in page.get('Contents', [])):
                     raise
         else:
             raise ApiError(404, 'LOG_NOT_READY', 'EMR has not archived this log yet')

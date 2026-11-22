@@ -90,3 +90,41 @@ def test_daily_allowance_has_midnight_retry_after(env, payload, monkeypatch):
     response, result = api(env, monkeypatch, second)
     assert response['statusCode'] == 429 and result['code'] == 'DAILY_LIMIT'
     assert int(response['headers']['Retry-After']) == 86400 - 1780315210 % 86400
+
+
+@pytest.mark.parametrize('present,expected_status,expected_code', [(False, 404, 'LOG_NOT_READY'), (True, 503, 'SERVICE_UNAVAILABLE')])
+def test_log_absence_and_denial_have_distinct_api_responses(env, payload, monkeypatch, caplog, present, expected_status, expected_code):
+    import boto3
+    from botocore.stub import Stubber
+    from app.emr import Emr
+    from test_emr import log_request, missing_lookup
+    from test_store import create
+
+    job = create(env, payload)
+    job = env.store.replace(job, status='SUBMITTED', step_id='s-STEP')
+    s3 = boto3.client('s3', region_name='us-east-1')
+    env.service.emr = Emr(None, s3)
+    with Stubber(s3) as stub:
+        for suffix in ['.gz'] if present else ['.gz', '']:
+            request = log_request(job, suffix)
+            stub.add_client_error('get_object', service_error_code='AccessDenied', service_message='private S3/KMS details', http_status_code=403, expected_params=request)
+            stub.add_response('list_objects_v2', {'Contents': [{'Key': request['Key']}] if present else []}, missing_lookup(request))
+        response, result = api(env, monkeypatch, event('GET', '/jobs/{job_id}/logs', pathParameters={'job_id': job['job_id']}))
+        assert response['statusCode'] == expected_status and result['code'] == expected_code
+        assert 'private S3/KMS details' not in response['body'] + caplog.text
+        stub.assert_no_pending_responses()
+
+
+def test_foreign_log_request_does_not_read_or_list_s3(env, payload, monkeypatch):
+    from app.emr import Emr
+    from conftest import OTHER
+    from test_store import create
+
+    job = create(env, payload)
+    env.store.replace(job, status='SUBMITTED', step_id='s-STEP')
+    s3 = Mock()
+    env.service.emr = Emr(None, s3)
+    response, result = api(env, monkeypatch, event('GET', '/jobs/{job_id}/logs', caller=OTHER, pathParameters={'job_id': job['job_id']}))
+    assert response['statusCode'] == 404 and result['code'] == 'NOT_FOUND'
+    s3.get_object.assert_not_called()
+    s3.list_objects_v2.assert_not_called()

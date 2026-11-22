@@ -10,6 +10,8 @@ Profile authorization occurs at admission. Ownership is checked on status, cance
 
 Only the worker Lambda can call `AddJobFlowSteps`; its IAM policy restricts cluster ARNs and requires the runtime-role parameter to be absent. Only the reconciler can describe/list/cancel steps. The API reads only configured cluster step-log prefixes. No Lambda can launch or terminate clusters through these policies.
 
+The API can also list at most one key per request under each configured cluster's step-log prefix. This narrowly scoped `s3:ListBucket` permission distinguishes a missing log from an unreadable object: S3 can return `AccessDenied` for a missing `GetObject` when bucket listing is restricted. An explicit exact-prefix lookup permits plaintext fallback or `LOG_NOT_READY` only when that candidate is absent. An existing inaccessible object, a failed list request, or a KMS denial remains a service error. The API never returns listing results or accepts a caller-supplied bucket/key. A compromised API role could enumerate names within these already-readable log prefixes; it cannot list the whole bucket with this policy.
+
 JAR arguments are passed as an API array, not interpolated into a shell command. Nevertheless, a Hadoop JAR is executable code and inherits the existing cluster's privileges. Approved prefixes are not a code sandbox, and a JAR may ignore its nominal input/output arguments. Protect artifact publishing, restrict the cluster instance profile, and isolate mutually untrusted workloads using separate infrastructure.
 
 ## Data and recovery

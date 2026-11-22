@@ -18,6 +18,8 @@ Queued cancellation is local and terminal. Once submission starts, cancellation 
 
 S3 log archiving can lag and can be disabled on the existing cluster. `LOG_NOT_READY` does not mean failure. Bounded log responses show the beginning of a selected archive; operators needing full logs use separately authorized S3/EMR tooling. Missing KMS access produces a service error rather than silently bypassing encryption.
 
+When a compressed or plaintext candidate returns `AccessDenied`, the API makes a bounded, exact-prefix `ListObjectsV2` request to establish whether that object exists. Missing gzip logs can then fall back to plaintext; two confirmed missing candidates return `LOG_NOT_READY`. An existing object that cannot be read, or a failed lookup, still returns `SERVICE_UNAVAILABLE`. Check both GetObject/KMS permissions and the prefix/max-keys conditions on ListBucket before treating a 503 as delayed archival. No bucket/key from these checks is exposed in the error response.
+
 ## Alarms and retention
 
 Confirm SNS subscription delivery. Alarms cover Lambda errors, API 5xx, queue age, DLQ depth and transitions into unknown/review states. These are operational signals, not a replacement for workload completion SLAs. Logs default to 30-day retention; terminal metadata defaults to 30 days, with TTL deletion asynchronous and immediate API expiry checks. EMR logs and job outputs are managed outside this stack.

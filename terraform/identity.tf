@@ -19,7 +19,14 @@ locals {
     { Effect = "Allow", Action = ["elasticmapreduce:ListSteps", "elasticmapreduce:DescribeStep", "elasticmapreduce:CancelSteps"], Resource = local.cluster_arns }
     ] : [], kind == "api" ? [
     { Effect = "Allow", Action = ["s3:GetObject"], Resource = local.log_arns }
-    ] : [], kind == "api" && length(var.log_kms_key_arns) > 0 ? [
+    ] : [], [for location in local.log_locations : {
+      Effect   = "Allow", Action = ["s3:ListBucket"],
+      Resource = "arn:${data.aws_partition.current.partition}:s3:::${location.bucket}",
+      Condition = {
+        StringLike            = { "s3:prefix" = "${location.prefix}*" }
+        NumericLessThanEquals = { "s3:max-keys" = "1" }
+      }
+    } if kind == "api"], kind == "api" && length(var.log_kms_key_arns) > 0 ? [
     { Effect = "Allow", Action = ["kms:Decrypt"], Resource = var.log_kms_key_arns, Condition = { StringEquals = { "kms:ViaService" = "s3.${var.region}.amazonaws.com" } } }
     ] : [])
   }

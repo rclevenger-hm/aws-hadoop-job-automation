@@ -63,3 +63,47 @@ run "reject_public_consumer" {
   }
   expect_failures = [var.cluster_profiles]
 }
+run "log_lookup_is_prefix_scoped" {
+  command = plan
+  variables {
+    cluster_profiles = {
+      analytics = {
+        cluster_id         = "j-EXAMPLE123"
+        allowed_principals = ["arn:aws:iam::123456789012:role/Consumer"]
+        jar_prefixes       = ["s3://assets/approved/"]
+        input_prefixes     = ["s3://data/input/"]
+        output_prefixes    = ["s3://data/output/"]
+        log_uri            = "s3://logs/clusters/"
+      }
+      reporting = {
+        cluster_id         = "j-OTHER456"
+        allowed_principals = ["arn:aws:iam::123456789012:role/Consumer"]
+        jar_prefixes       = ["s3://assets/approved/"]
+        input_prefixes     = ["s3://data/input/"]
+        output_prefixes    = ["s3://data/output/"]
+        log_uri            = "s3://other-logs/archive/nested/"
+      }
+    }
+  }
+  assert {
+    condition = toset([for s in local.runtime_statements["api"] : jsonencode({
+      resource = s.Resource, condition = s.Condition
+      }) if contains(s.Action, "s3:ListBucket")]) == toset([
+      jsonencode({ resource = "arn:aws:s3:::logs", condition = {
+        StringLike = { "s3:prefix" = "clusters/j-EXAMPLE123/steps/*" }, NumericLessThanEquals = { "s3:max-keys" = "1" }
+      } }),
+      jsonencode({ resource = "arn:aws:s3:::other-logs", condition = {
+        StringLike = { "s3:prefix" = "archive/nested/j-OTHER456/steps/*" }, NumericLessThanEquals = { "s3:max-keys" = "1" }
+      } })
+    ])
+    error_message = "Log absence checks must list at most one key under the matching bucket's cluster step-log prefix."
+  }
+  assert {
+    condition     = alltrue([for s in concat(local.runtime_statements["worker"], local.runtime_statements["reconcile"]) : !contains(s.Action, "s3:ListBucket")])
+    error_message = "Only the API role needs log absence checks."
+  }
+  assert {
+    condition     = toset(local.log_arns) == toset(["arn:aws:s3:::logs/clusters/j-EXAMPLE123/steps/*", "arn:aws:s3:::other-logs/archive/nested/j-OTHER456/steps/*"])
+    error_message = "Object-read scope must remain restricted to the corresponding cluster step logs."
+  }
+}
