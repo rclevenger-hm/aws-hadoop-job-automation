@@ -3,5 +3,5 @@ pytest==9.2.0
 moto==5.2.5
 ruff==0.17.5
 pip-audit==2.10.1
-PyYAML==6.0.3
+PyYAML==6.0.4
 pip-tools==7.6.2
